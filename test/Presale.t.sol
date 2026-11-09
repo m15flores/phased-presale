@@ -143,28 +143,21 @@ contract PresaleTest is Test {
     function test_BuyWithStable_Stable18DecimalsReturnsExpectedTokens() public {
         vm.warp(startingTime + 1 days);
         uint256 amount_ = 3.75e18;
-        usdt18.mint(user, amount_);
-
         uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
-        vm.startPrank(user);
-        usdt18.approve(address(presale), amount_);
-        presale.buyWithStable(address(usdt18), amount_);
-        vm.stopPrank();
-        uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
 
+        _buyWithStable(usdt18, user, amount_);
+
+        uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
         assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 750e18);
     }
 
     function test_BuyWithStable_Usdc6DecimalsReturnsExpectedTokens() public {
         vm.warp(startingTime + 1 days);
         uint256 amount_ = 2.5e6;
-        usdc.mint(user, amount_);
-
         uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
-        vm.startPrank(user);
-        usdc.approve(address(presale), amount_);
-        presale.buyWithStable(address(usdc), amount_);
-        vm.stopPrank();
+
+        _buyWithStable(usdc, user, amount_);
+
         uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
 
         assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 500e18);
@@ -198,13 +191,9 @@ contract PresaleTest is Test {
     function test_BuyWithStable_AllowsAtStart() public {
         vm.warp(startingTime);
         uint256 amount_ = 1e6;
-        usdc.mint(user, amount_);
         uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
 
-        vm.startPrank(user);
-        usdc.approve(address(presale), amount_);
-        presale.buyWithStable(address(usdc), amount_);
-        vm.stopPrank();
+        _buyWithStable(usdc, user, amount_);
 
         uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
         assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 200e18);
@@ -213,13 +202,9 @@ contract PresaleTest is Test {
     function test_BuyWithStable_AllowsAtEnd() public {
         vm.warp(endingTime);
         uint256 amount_ = 1e6;
-        usdc.mint(user, amount_);
         uint256 balanceFundsReceiverBefore_ = usdc.balanceOf(fundsReceiver);
 
-        vm.startPrank(user);
-        usdc.approve(address(presale), amount_);
-        presale.buyWithStable(address(usdc), amount_);
-        vm.stopPrank();
+        _buyWithStable(usdc, user, amount_);
 
         uint256 userTokenBalance_ = presale.userTokenBalance(user);
         uint256 balanceFundsReceiverAfter_ = usdc.balanceOf(fundsReceiver);
@@ -229,19 +214,16 @@ contract PresaleTest is Test {
 
     function test_BuyWithStable_UsesPhaseOnePriceAfterCapReached() public {
         vm.warp(startingTime + 1 days);
-        uint256 amount_ = 5_001e6;
-        usdc.mint(user, amount_);
+        uint256 amount_ = 5_000e6;
 
-        vm.startPrank(user);
-        usdc.approve(address(presale), amount_);
-        presale.buyWithStable(address(usdc), 5_000e6);
-        vm.stopPrank();
+        _buyWithStable(usdc, user, amount_);
 
         assertEq(presale.currentPhase(), 1);
 
         uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
-        vm.prank(user);
-        presale.buyWithStable(address(usdc), 1e6);
+        uint256 amount2_ = 1e6;
+
+        _buyWithStable(usdc, user, amount2_);
 
         uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
         assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 100e18);
@@ -253,12 +235,8 @@ contract PresaleTest is Test {
         uint256 totalSoldBefore_ = presale.totalSold();
         uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
         uint256 balanceFundsReceiverBefore_ = usdc.balanceOf(fundsReceiver);
-        usdc.mint(user, amount_);
 
-        vm.startPrank(user);
-        usdc.approve(address(presale), amount_);
-        presale.buyWithStable(address(usdc), amount_);
-        vm.stopPrank();
+        _buyWithStable(usdc, user, amount_);
 
         uint256 totalSoldAfter_ = presale.totalSold();
         uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
@@ -391,5 +369,13 @@ contract PresaleTest is Test {
             end_,
             _phases()
         );
+    }
+
+    function _buyWithStable(MockERC20 stable_, address buyer_, uint256 amount_) internal {
+        stable_.mint(buyer_, amount_);
+        vm.startPrank(buyer_);
+        stable_.approve(address(presale), amount_);
+        presale.buyWithStable(address(stable_), amount_);
+        vm.stopPrank();
     }
 }
