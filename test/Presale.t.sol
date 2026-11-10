@@ -136,6 +136,22 @@ contract PresaleTest is Test {
         _deployPresale(presaleParams_);
     }
 
+    function test_Constructor_RevertWhen_PhaseHasTooFewValues() public {
+        PresaleParams memory presaleParams_ = _defaultParams();
+        presaleParams_.phases[1] = new uint256[](2);
+
+        vm.expectRevert(Presale.InvalidPhaseShape.selector);
+        _deployPresale(presaleParams_);
+    }
+
+    function test_Constructor_RevertWhen_PhaseHasTooManyValues() public {
+        PresaleParams memory presaleParams_ = _defaultParams();
+        presaleParams_.phases[1] = new uint256[](4);
+
+        vm.expectRevert(Presale.InvalidPhaseShape.selector);
+        _deployPresale(presaleParams_);
+    }
+
     // BuyWithStable
 
     function test_BuyWithStable_Stable18DecimalsReturnsExpectedTokens() public {
@@ -853,6 +869,7 @@ contract PresaleTest is Test {
     }
 
     function _deployPresale(PresaleParams memory p_) internal returns (Presale presale_) {
+        console.log(p_.phases[0].length, p_.phases[1].length, p_.phases[2].length);
         vm.prank(owner);
         presale_ = new Presale(
             p_.saleToken,
