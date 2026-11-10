@@ -17,12 +17,14 @@ contract PresaleTest is Test {
     address user;
     address owner;
     address fundsReceiver;
+    uint256 maxAgePrice;
     uint256 maxSellingAmount;
     uint256 startingTime;
     uint256 endingTime;
     Presale presale;
 
     int256 internal constant ETH_PRICE = 3_000e8;
+    uint256 internal constant MAX_AGE_PRICE = 25 hours;
     uint256 internal constant MAX_SELLING_AMOUNT = 3_000_000e18;
     uint256 internal constant START_DELAY = 1 days;
     uint256 internal constant PHASE_DURATION = 10 days;
@@ -43,6 +45,7 @@ contract PresaleTest is Test {
         usdc = new MockERC20("Mock USDC", "USDC", 6);
         usdt18 = new MockERC20("Mock USDT 18 dec", "USDT18", 18);
 
+        maxAgePrice = MAX_AGE_PRICE;
         maxSellingAmount = MAX_SELLING_AMOUNT;
         startingTime = block.timestamp + START_DELAY;
         endingTime = startingTime + 3 * PHASE_DURATION;
@@ -58,6 +61,7 @@ contract PresaleTest is Test {
             address(usdc),
             fundsReceiver,
             address(aggregator),
+            maxAgePrice,
             maxSellingAmount,
             startingTime,
             endingTime,
@@ -132,6 +136,7 @@ contract PresaleTest is Test {
             address(usdc),
             fundsReceiver,
             address(aggregator),
+            maxAgePrice,
             maxSellingAmount,
             startingTime,
             endingTime,
@@ -495,6 +500,7 @@ contract PresaleTest is Test {
             address(usdc),
             address(rejecter_),
             address(aggregator),
+            maxAgePrice,
             maxSellingAmount,
             startingTime,
             endingTime,
@@ -730,6 +736,7 @@ contract PresaleTest is Test {
             address(usdc),
             fundsReceiver,
             address(aggregator),
+            maxAgePrice,
             maxSellingAmount,
             start_,
             end_,

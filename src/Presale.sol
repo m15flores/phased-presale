@@ -23,6 +23,7 @@ contract Presale is Ownable {
 
     uint256 public totalSold;
     uint256 public currentPhase;
+    uint256 public immutable maxPriceAge;
     mapping(address => bool) public isBlacklisted;
     mapping(address => uint256) public userTokenBalance;
 
@@ -36,6 +37,7 @@ contract Presale is Ownable {
     error SoldOut();
     error TransferFailed();
     error InvalidPrice();
+    error StalePrice();
 
     constructor(
         address saleTokenAddress_,
@@ -43,6 +45,7 @@ contract Presale is Ownable {
         address usdcAddress_,
         address fundsReceiverAddress_,
         address dataFeedAddress_,
+        uint256 maxPriceAge_,
         uint256 maxSellingAmount_,
         uint256 startingTime_,
         uint256 endingTime_,
@@ -53,6 +56,7 @@ contract Presale is Ownable {
         usdcAddress = usdcAddress_;
         fundsReceiverAddress = fundsReceiverAddress_;
         dataFeedAddress = dataFeedAddress_;
+        maxPriceAge = maxPriceAge_;
         maxSellingAmount = maxSellingAmount_;
         startingTime = startingTime_;
         endingTime = endingTime_;
