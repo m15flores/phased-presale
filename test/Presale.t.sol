@@ -208,13 +208,14 @@ contract PresaleTest is Test {
     function test_BuyWithStable_AllowsAtEnd() public {
         vm.warp(endingTime);
         uint256 amount_ = 1e6;
+        uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
         uint256 balanceFundsReceiverBefore_ = usdc.balanceOf(fundsReceiver);
 
         _buyWithStable(usdc, user, amount_);
 
-        uint256 userTokenBalance_ = presale.userTokenBalance(user);
+        uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
         uint256 balanceFundsReceiverAfter_ = usdc.balanceOf(fundsReceiver);
-        assertGt(userTokenBalance_, 0);
+        assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 50e18);
         assertEq(balanceFundsReceiverAfter_ - balanceFundsReceiverBefore_, amount_);
     }
 
@@ -251,6 +252,26 @@ contract PresaleTest is Test {
         assertEq(totalSoldAfter_ - totalSoldBefore_, 0);
         assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 0);
         assertEq(balanceFundsReceiverAfter_ - balanceFundsReceiverBefore_, 0);
+    }
+
+    function test_BuyWithStable_UsesNewPhasePriceWhenPhaseTimeExpired() public {
+        vm.warp(presale.phases(0, 2));
+
+        uint256 amount_ = 1_000e6;
+        _buyWithStable(usdc, user, amount_);
+
+        uint256 userTokenBalance_ = presale.userTokenBalance(user);
+        assertEq(userTokenBalance_, 100_000e18);
+    }
+
+    function test_BuyWithStable_SkipsMultipleExpiredPhases() public {
+        vm.warp(presale.phases(1, 2));
+
+        uint256 amount_ = 1_000e6;
+        _buyWithStable(usdc, user, amount_);
+
+        uint256 userTokenBalance_ = presale.userTokenBalance(user);
+        assertEq(userTokenBalance_, 50_000e18);
     }
 
     function test_BuyWithStable_EmitsTokenBuy() public {
@@ -401,13 +422,16 @@ contract PresaleTest is Test {
         vm.deal(user, amount_);
         _warpTo(endingTime);
         uint256 balanceFundsReceiverBefore_ = fundsReceiver.balance;
+        uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
 
         vm.prank(user);
         presale.buyWithEther{value: amount_}();
 
         uint256 userTokenBalance_ = presale.userTokenBalance(user);
+        uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
         uint256 balanceFundsReceiverAfter_ = fundsReceiver.balance;
-        assertGt(userTokenBalance_, 0);
+
+        assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 150_000e18);
         assertEq(balanceFundsReceiverAfter_ - balanceFundsReceiverBefore_, amount_);
         assertEq(presale.totalSold(), userTokenBalance_);
         assertEq(user.balance, 0);

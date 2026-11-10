@@ -88,6 +88,7 @@ contract Presale is Ownable {
         if (block.timestamp < startingTime || endingTime < block.timestamp) revert NotStarted();
         if (tokenUsedToBuy_ != usdtAddress && tokenUsedToBuy_ != usdcAddress) revert InvalidToken();
 
+        _advanceExpiredPhases();
         uint256 tokenAmountToReceive;
         if (ERC20(tokenUsedToBuy_).decimals() == 18) {
             tokenAmountToReceive = amount_ * 1e6 / phases[currentPhase][1];
@@ -113,6 +114,7 @@ contract Presale is Ownable {
         if (isBlacklisted[msg.sender]) revert UserBlacklisted();
         if (block.timestamp < startingTime || endingTime < block.timestamp) revert NotStarted();
 
+        _advanceExpiredPhases();
         uint256 usdValue = msg.value * getEtherPrice() / 1e18;
         uint256 tokenAmountToReceive = usdValue * 1e6 / phases[currentPhase][1];
 
@@ -167,5 +169,12 @@ contract Presale is Ownable {
             currentPhase++;
         }
         phase = currentPhase;
+    }
+
+    function _advanceExpiredPhases() private {
+        // forge-lint: disable-next-line(block-timestamp)
+        while (currentPhase < 2 && block.timestamp >= phases[currentPhase][2]) {
+            currentPhase++;
+        }
     }
 }
