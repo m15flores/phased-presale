@@ -152,6 +152,14 @@ contract PresaleTest is Test {
         _deployPresale(presaleParams_);
     }
 
+    function test_Constructor_RevertWhen_PhasePriceIsZero() public {
+        PresaleParams memory presaleParams_ = _defaultParams();
+        presaleParams_.phases[1][1] = 0;
+
+        vm.expectRevert(Presale.InvalidPhasePrice.selector);
+        _deployPresale(presaleParams_);
+    }
+
     // BuyWithStable
 
     function test_BuyWithStable_Stable18DecimalsReturnsExpectedTokens() public {

@@ -40,6 +40,7 @@ contract Presale is Ownable {
     error StalePrice();
     error PhaseCapExceeded();
     error InvalidPhaseShape();
+    error InvalidPhasePrice();
 
     constructor(
         address saleTokenAddress_,
@@ -55,6 +56,7 @@ contract Presale is Ownable {
     ) Ownable(msg.sender) {
         for (uint256 i = 0; i < phases.length; i++) {
             if (phases_[i].length != 3) revert InvalidPhaseShape();
+            if (phases_[i][1] == 0) revert InvalidPhasePrice();
         }
 
         saleTokenAddress = saleTokenAddress_;
