@@ -160,6 +160,22 @@ contract PresaleTest is Test {
         _deployPresale(presaleParams_);
     }
 
+    function test_Constructor_RevertWhen_PhaseCapsAreNotIncreasing() public {
+        PresaleParams memory presaleParams_ = _defaultParams();
+        presaleParams_.phases[2][0] = presaleParams_.phases[0][0];
+
+        vm.expectRevert(Presale.InvalidPhaseCap.selector);
+        _deployPresale(presaleParams_);
+    }
+
+    function test_Constructor_RevertWhen_LastPhaseCapIsNotMaxSellingAmount() public {
+        PresaleParams memory presaleParams_ = _defaultParams();
+        presaleParams_.phases[2][0] = MAX_SELLING_AMOUNT - 1;
+
+        vm.expectRevert(Presale.InvalidPhaseCap.selector);
+        _deployPresale(presaleParams_);
+    }
+
     // BuyWithStable
 
     function test_BuyWithStable_Stable18DecimalsReturnsExpectedTokens() public {
