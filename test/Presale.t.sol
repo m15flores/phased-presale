@@ -708,6 +708,26 @@ contract PresaleTest is Test {
         assertEq(price_, 3_000e18);
     }
 
+    function test_GetEtherPrice_ScalesFeedWith18Decimals() public {
+        uint8 decimals_ = 18;
+        int256 answer_ = 3_000e18;
+        aggregator.setDecimals(decimals_);
+        aggregator.setAnswer(answer_);
+
+        uint256 price_ = presale.getEtherPrice();
+        assertEq(price_, 3_000e18);
+    }
+
+    function test_GetEtherPrice_ScalesFeedWith6Decimals() public {
+        uint8 decimals_ = 6;
+        int256 answer_ = 3_000e6;
+        aggregator.setDecimals(decimals_);
+        aggregator.setAnswer(answer_);
+
+        uint256 price_ = presale.getEtherPrice();
+        assertEq(price_, 3_000e18);
+    }
+
     function test_Blacklist_RevertWhen_NotOwner() public {
         address randomUser_ = makeAddr("randomUser");
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));

@@ -150,13 +150,13 @@ contract Presale is Ownable {
     }
 
     function getEtherPrice() public view returns (uint256) {
+        IAggregator feed_ = IAggregator(dataFeedAddress);
         (, int256 price,, uint256 updatedAt,) = IAggregator(dataFeedAddress).latestRoundData();
         if (price <= 0) revert InvalidPrice();
         // forge-lint: disable-next-line(block-timestamp)
         if (block.timestamp > updatedAt + maxPriceAge) revert StalePrice();
-        price = price * 10 ** 10;
         // forge-lint: disable-next-line(unsafe-typecast)
-        return uint256(price);
+        return (uint256(price) * 1e18) / 10 ** feed_.decimals();
     }
 
     function checkCurrentPhase(uint256 amount_) private returns (uint256 phase) {
