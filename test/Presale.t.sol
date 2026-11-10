@@ -353,7 +353,7 @@ contract PresaleTest is Test {
         aggregator.setAnswer(2_000e8);
         uint256 amount_ = 0.75 ether;
         vm.deal(user, amount_);
-        vm.warp(startingTime + 1 days);
+        _warpTo(startingTime + 1 days);
         uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
 
         vm.prank(user);
@@ -366,7 +366,7 @@ contract PresaleTest is Test {
     function test_BuyWithEther_UpdatesAccounting() public {
         uint256 amount_ = 1 ether;
         vm.deal(user, amount_);
-        vm.warp(startingTime);
+        _warpTo(startingTime);
         uint256 totalSoldBefore_ = presale.totalSold();
         uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
         uint256 balanceFundsReceiverBefore_ = fundsReceiver.balance;
@@ -386,7 +386,7 @@ contract PresaleTest is Test {
     function test_BuyWithEther_AllowsAtStart() public {
         uint256 amount_ = 1 ether;
         vm.deal(user, amount_);
-        vm.warp(startingTime);
+        _warpTo(startingTime);
         uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
 
         vm.prank(user);
@@ -399,7 +399,7 @@ contract PresaleTest is Test {
     function test_BuyWithEther_AllowsAtEnd() public {
         uint256 amount_ = 1 ether;
         vm.deal(user, amount_);
-        vm.warp(endingTime);
+        _warpTo(endingTime);
         uint256 balanceFundsReceiverBefore_ = fundsReceiver.balance;
 
         vm.prank(user);
@@ -416,7 +416,7 @@ contract PresaleTest is Test {
 
     function test_BuyWithEther_ZeroValueChangesNothing() public {
         uint256 amount_ = 0;
-        vm.warp(startingTime + 1 days);
+        _warpTo(startingTime + 1 days);
         uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
         uint256 totalSoldBefore_ = presale.totalSold();
 
@@ -432,7 +432,7 @@ contract PresaleTest is Test {
     function test_BuyWithEther_EmitsTokenBuy() public {
         uint256 amount_ = 1 ether;
         vm.deal(user, amount_);
-        vm.warp(startingTime + 1 days);
+        _warpTo(startingTime + 1 days);
 
         vm.expectEmit(false, false, false, true, address(presale));
         emit Presale.TokenBuy(user, 600_000e18);
@@ -443,7 +443,7 @@ contract PresaleTest is Test {
     function test_BuyWithEther_RevertWhen_BuyingBeforeStartingTime() public {
         uint256 amount_ = 1e18;
         vm.deal(user, amount_);
-        vm.warp(startingTime - 1);
+        _warpTo(startingTime - 1);
 
         vm.expectRevert(Presale.NotStarted.selector);
         vm.prank(user);
@@ -453,7 +453,7 @@ contract PresaleTest is Test {
     function test_BuyWithEther_RevertWhen_BuyingAfterEndingTime() public {
         uint256 amount_ = 1e18;
         vm.deal(user, amount_);
-        vm.warp(endingTime + 1);
+        _warpTo(endingTime + 1);
 
         vm.expectRevert(Presale.NotStarted.selector);
         vm.prank(user);
@@ -463,7 +463,7 @@ contract PresaleTest is Test {
     function test_BuyWithEther_RevertWhen_UserBlacklisted() public {
         uint256 amount_ = 1e18;
         vm.deal(user, amount_);
-        vm.warp(startingTime + 1);
+        _warpTo(startingTime + 1);
 
         vm.prank(owner);
         presale.blacklist(user);
@@ -476,7 +476,7 @@ contract PresaleTest is Test {
     function test_BuyWithEther_RevertWhen_SoldOut() public {
         uint256 amount_ = 5 ether + 1;
         vm.deal(user, amount_);
-        vm.warp(startingTime + 1);
+        _warpTo(startingTime + 1);
 
         vm.expectRevert(Presale.SoldOut.selector);
         vm.prank(user);
@@ -487,7 +487,7 @@ contract PresaleTest is Test {
         RejectEther rejecter_ = new RejectEther();
         uint256 amount_ = 1 ether;
         vm.deal(user, amount_);
-        vm.warp(startingTime + 1 days);
+        _warpTo(startingTime + 1 days);
 
         saleToken.mint(owner, MAX_SELLING_AMOUNT);
         address presaleAddress_ = vm.computeCreateAddress(owner, vm.getNonce(owner));
@@ -518,7 +518,7 @@ contract PresaleTest is Test {
         uint256 amount_ = 1 ether;
         aggregator.setAnswer(answer_);
 
-        vm.warp(startingTime);
+        _warpTo(startingTime);
         vm.deal(user, amount_);
 
         vm.expectRevert(Presale.InvalidPrice.selector);
@@ -531,7 +531,7 @@ contract PresaleTest is Test {
         uint256 amount_ = 1 ether;
         aggregator.setAnswer(answer_);
 
-        vm.warp(startingTime);
+        _warpTo(startingTime);
         vm.deal(user, amount_);
 
         vm.expectRevert(Presale.InvalidPrice.selector);
@@ -544,14 +544,14 @@ contract PresaleTest is Test {
     function test_Claim_TransfersBalanceAfterEnd() public {
         uint256 amount_ = 1 ether;
         vm.deal(user, amount_);
-        vm.warp(startingTime + 1 days);
+        _warpTo(startingTime + 1 days);
 
         vm.prank(user);
         presale.buyWithEther{value: amount_}();
         uint256 userSaleTokenBalanceBefore_ = saleToken.balanceOf(user);
         uint256 presaleSaleTokenBalanceBefore_ = saleToken.balanceOf(address(presale));
 
-        vm.warp(endingTime);
+        _warpTo(endingTime);
         vm.prank(user);
         presale.claim();
 
@@ -567,11 +567,11 @@ contract PresaleTest is Test {
     function test_Claim_SecondClaimTransfersNothing() public {
         uint256 amount_ = 1 ether;
         vm.deal(user, amount_);
-        vm.warp(startingTime + 1 days);
+        _warpTo(startingTime + 1 days);
 
         vm.prank(user);
         presale.buyWithEther{value: amount_}();
-        vm.warp(endingTime);
+        _warpTo(endingTime);
 
         vm.prank(user);
         presale.claim();
@@ -589,7 +589,7 @@ contract PresaleTest is Test {
     }
 
     function test_Claim_ZeroBalanceDoesNotRevert() public {
-        vm.warp(endingTime + 1 days);
+        _warpTo(endingTime + 1 days);
 
         vm.prank(user);
         presale.claim();
@@ -603,14 +603,14 @@ contract PresaleTest is Test {
     function test_Claim_BlacklistedUserCanClaim() public {
         uint256 amount_ = 1 ether;
         vm.deal(user, amount_);
-        vm.warp(startingTime + 1 days);
+        _warpTo(startingTime + 1 days);
 
         vm.prank(user);
         presale.buyWithEther{value: amount_}();
 
         vm.prank(owner);
         presale.blacklist(user);
-        vm.warp(endingTime);
+        _warpTo(endingTime);
 
         vm.prank(user);
         presale.claim();
@@ -622,7 +622,7 @@ contract PresaleTest is Test {
     }
 
     function test_Claim_RevertWhen_BeforeEnding() public {
-        vm.warp(endingTime - 1);
+        _warpTo(endingTime - 1);
 
         vm.expectRevert(Presale.NotEnded.selector);
         vm.prank(user);
@@ -750,5 +750,10 @@ contract PresaleTest is Test {
         stable_.approve(address(presale), amount_);
         presale.buyWithStable(address(stable_), amount_);
         vm.stopPrank();
+    }
+
+    function _warpTo(uint256 timestamp_) internal {
+        vm.warp(timestamp_);
+        aggregator.setUpdatedAt(timestamp_);
     }
 }
