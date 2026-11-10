@@ -368,6 +368,33 @@ contract PresaleTest is Test {
         presale.buyWithStable(address(usdc), amount_);
     }
 
+    function test_BuyWithStable_RevertWhen_PurchaseCrossesPhaseCap() public {
+        _warpTo(startingTime + 1 days);
+
+        uint256 amount_ = 5_000e6 + 1;
+        usdc.mint(user, amount_);
+
+        vm.startPrank(user);
+        usdc.approve(address(presale), amount_);
+        vm.expectRevert(Presale.PhaseCapExceeded.selector);
+        presale.buyWithStable(address(usdc), amount_);
+        vm.stopPrank();
+    }
+
+    function test_BuyWithStable_RevertWhen_PurchaseCrossesPhaseOneCap() public {
+        vm.warp(startingTime + 1 days);
+        _buyWithStable(usdc, user, 5_000e6);
+
+        uint256 amount_ = 10_000e6 + 1;
+        usdc.mint(user, amount_);
+
+        vm.startPrank(user);
+        usdc.approve(address(presale), amount_);
+        vm.expectRevert(Presale.PhaseCapExceeded.selector);
+        presale.buyWithStable(address(usdc), amount_);
+        vm.stopPrank();
+    }
+
     // buyWithEther
 
     function test_BuyWithEther_ReturnsExpectedTokens() public {
@@ -586,6 +613,17 @@ contract PresaleTest is Test {
         vm.warp(updatedAt_ + MAX_PRICE_AGE + 1);
 
         vm.expectRevert(Presale.StalePrice.selector);
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+    }
+
+    function test_BuyWithEther_RevertWhen_PurchaseCrossesPhaseCap() public {
+        aggregator.setAnswer(2_500e8);
+        uint256 amount_ = 2 ether + 1;
+        vm.deal(user, amount_);
+        _warpTo(startingTime + 1 days);
+
+        vm.expectRevert(Presale.PhaseCapExceeded.selector);
         vm.prank(user);
         presale.buyWithEther{value: amount_}();
     }

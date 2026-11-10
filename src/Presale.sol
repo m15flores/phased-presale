@@ -38,6 +38,7 @@ contract Presale is Ownable {
     error TransferFailed();
     error InvalidPrice();
     error StalePrice();
+    error PhaseCapExceeded();
 
     constructor(
         address saleTokenAddress_,
@@ -88,7 +89,7 @@ contract Presale is Ownable {
         if (block.timestamp < startingTime || endingTime < block.timestamp) revert NotStarted();
         if (tokenUsedToBuy_ != usdtAddress && tokenUsedToBuy_ != usdcAddress) revert InvalidToken();
 
-        _advanceExpiredPhases();
+        _advancePhase();
         uint256 tokenAmountToReceive;
         if (ERC20(tokenUsedToBuy_).decimals() == 18) {
             tokenAmountToReceive = amount_ * 1e6 / phases[currentPhase][1];
@@ -96,10 +97,11 @@ contract Presale is Ownable {
             tokenAmountToReceive =
                 amount_ * 10 ** (18 - ERC20(tokenUsedToBuy_).decimals()) * 1e6 / phases[currentPhase][1];
         }
-        checkCurrentPhase(tokenAmountToReceive);
 
         totalSold += tokenAmountToReceive;
         if (totalSold > maxSellingAmount) revert SoldOut();
+        if (totalSold > phases[currentPhase][0]) revert PhaseCapExceeded();
+        _advancePhase();
 
         // Increment user's balance
         userTokenBalance[msg.sender] += tokenAmountToReceive;
@@ -114,14 +116,14 @@ contract Presale is Ownable {
         if (isBlacklisted[msg.sender]) revert UserBlacklisted();
         if (block.timestamp < startingTime || endingTime < block.timestamp) revert NotStarted();
 
-        _advanceExpiredPhases();
+        _advancePhase();
         uint256 usdValue = msg.value * getEtherPrice() / 1e18;
         uint256 tokenAmountToReceive = usdValue * 1e6 / phases[currentPhase][1];
 
-        checkCurrentPhase(tokenAmountToReceive);
-
         totalSold += tokenAmountToReceive;
         if (totalSold > maxSellingAmount) revert SoldOut();
+        if (totalSold > phases[currentPhase][0]) revert PhaseCapExceeded();
+        _advancePhase();
 
         // Increment user's balance
         userTokenBalance[msg.sender] += tokenAmountToReceive;
@@ -171,9 +173,11 @@ contract Presale is Ownable {
         phase = currentPhase;
     }
 
-    function _advanceExpiredPhases() private {
+    function _advancePhase() private {
         // forge-lint: disable-next-line(block-timestamp)
-        while (currentPhase < 2 && block.timestamp >= phases[currentPhase][2]) {
+        while (
+            currentPhase < 2 && (block.timestamp >= phases[currentPhase][2] || totalSold >= phases[currentPhase][0])
+        ) {
             currentPhase++;
         }
     }
