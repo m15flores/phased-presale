@@ -5,6 +5,7 @@ pragma solidity 0.8.34;
 import "forge-std/Test.sol";
 import "./mocks/MockERC20.sol";
 import "./mocks/MockAggregator.sol";
+import "./mocks/RejectEther.sol";
 import "../src/Presale.sol";
 import "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
@@ -340,6 +341,345 @@ contract PresaleTest is Test {
         vm.prank(buyer_);
         presale.buyWithStable(address(usdc), amount_);
     }
+
+    // buyWithEther
+
+    function test_BuyWithEther_ReturnsExpectedTokens() public {
+        aggregator.setAnswer(2_000e8);
+        uint256 amount_ = 0.75 ether;
+        vm.deal(user, amount_);
+        vm.warp(startingTime + 1 days);
+        uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
+
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+
+        uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
+        assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 300_000e18);
+    }
+
+    function test_BuyWithEther_UpdatesAccounting() public {
+        uint256 amount_ = 1 ether;
+        vm.deal(user, amount_);
+        vm.warp(startingTime);
+        uint256 totalSoldBefore_ = presale.totalSold();
+        uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
+        uint256 balanceFundsReceiverBefore_ = fundsReceiver.balance;
+
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+
+        uint256 totalSoldAfter_ = presale.totalSold();
+        uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
+        uint256 balanceFundsReceiverAfter_ = fundsReceiver.balance;
+
+        assertEq(totalSoldAfter_ - totalSoldBefore_, 600_000e18);
+        assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 600_000e18);
+        assertEq(balanceFundsReceiverAfter_ - balanceFundsReceiverBefore_, amount_);
+    }
+
+    function test_BuyWithEther_AllowsAtStart() public {
+        uint256 amount_ = 1 ether;
+        vm.deal(user, amount_);
+        vm.warp(startingTime);
+        uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
+
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+
+        uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
+        assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 600_000e18);
+    }
+
+    function test_BuyWithEther_AllowsAtEnd() public {
+        uint256 amount_ = 1 ether;
+        vm.deal(user, amount_);
+        vm.warp(endingTime);
+        uint256 balanceFundsReceiverBefore_ = fundsReceiver.balance;
+
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+
+        uint256 userTokenBalance_ = presale.userTokenBalance(user);
+        uint256 balanceFundsReceiverAfter_ = fundsReceiver.balance;
+        assertGt(userTokenBalance_, 0);
+        assertEq(balanceFundsReceiverAfter_ - balanceFundsReceiverBefore_, amount_);
+        assertEq(presale.totalSold(), userTokenBalance_);
+        assertEq(user.balance, 0);
+        assertEq(address(presale).balance, 0);
+    }
+
+    function test_BuyWithEther_ZeroValueChangesNothing() public {
+        uint256 amount_ = 0;
+        vm.warp(startingTime + 1 days);
+        uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
+        uint256 totalSoldBefore_ = presale.totalSold();
+
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+
+        uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
+        uint256 totalSoldAfter_ = presale.totalSold();
+        assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 0);
+        assertEq(totalSoldAfter_ - totalSoldBefore_, 0);
+    }
+
+    function test_BuyWithEther_EmitsTokenBuy() public {
+        uint256 amount_ = 1 ether;
+        vm.deal(user, amount_);
+        vm.warp(startingTime + 1 days);
+
+        vm.expectEmit(false, false, false, true, address(presale));
+        emit Presale.TokenBuy(user, 600_000e18);
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+    }
+
+    function test_BuyWithEther_RevertWhen_BuyingBeforeStartingTime() public {
+        uint256 amount_ = 1e18;
+        vm.deal(user, amount_);
+        vm.warp(startingTime - 1);
+
+        vm.expectRevert(Presale.NotStarted.selector);
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+    }
+
+    function test_BuyWithEther_RevertWhen_BuyingAfterEndingTime() public {
+        uint256 amount_ = 1e18;
+        vm.deal(user, amount_);
+        vm.warp(endingTime + 1);
+
+        vm.expectRevert(Presale.NotStarted.selector);
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+    }
+
+    function test_BuyWithEther_RevertWhen_UserBlacklisted() public {
+        uint256 amount_ = 1e18;
+        vm.deal(user, amount_);
+        vm.warp(startingTime + 1);
+
+        vm.prank(owner);
+        presale.blacklist(user);
+
+        vm.expectRevert(Presale.UserBlacklisted.selector);
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+    }
+
+    function test_BuyWithEther_RevertWhen_SoldOut() public {
+        uint256 amount_ = 5 ether + 1;
+        vm.deal(user, amount_);
+        vm.warp(startingTime + 1);
+
+        vm.expectRevert(Presale.SoldOut.selector);
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+    }
+
+    function test_BuyWithEther_RevertWhen_ReceiverEjectsEther() public {
+        RejectEther rejecter_ = new RejectEther();
+        uint256 amount_ = 1 ether;
+        vm.deal(user, amount_);
+        vm.warp(startingTime + 1 days);
+
+        saleToken.mint(owner, MAX_SELLING_AMOUNT);
+        address presaleAddress_ = vm.computeCreateAddress(owner, vm.getNonce(owner));
+
+        vm.startPrank(owner);
+        saleToken.approve(presaleAddress_, MAX_SELLING_AMOUNT);
+        Presale presaleRejecting_ = new Presale(
+            address(saleToken),
+            address(usdt18),
+            address(usdc),
+            address(rejecter_),
+            address(aggregator),
+            maxSellingAmount,
+            startingTime,
+            endingTime,
+            _phases()
+        );
+        vm.stopPrank();
+
+        vm.expectRevert(Presale.TransferFailed.selector);
+        vm.prank(user);
+        presaleRejecting_.buyWithEther{value: amount_}();
+    }
+
+    // claim
+
+    function test_Claim_TransfersBalanceAfterEnd() public {
+        uint256 amount_ = 1 ether;
+        vm.deal(user, amount_);
+        vm.warp(startingTime + 1 days);
+
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+        uint256 userSaleTokenBalanceBefore_ = saleToken.balanceOf(user);
+        uint256 presaleSaleTokenBalanceBefore_ = saleToken.balanceOf(address(presale));
+
+        vm.warp(endingTime);
+        vm.prank(user);
+        presale.claim();
+
+        uint256 userTokenBalance_ = presale.userTokenBalance(user);
+        uint256 userSaleTokenBalanceAfter_ = saleToken.balanceOf(user);
+        uint256 presaleSaleTokenBalanceAfter_ = saleToken.balanceOf(address(presale));
+        assertEq(userTokenBalance_, 0);
+        assertEq(userSaleTokenBalanceBefore_, 0);
+        assertEq(userSaleTokenBalanceAfter_, 600_000e18);
+        assertEq(presaleSaleTokenBalanceBefore_ - presaleSaleTokenBalanceAfter_, 600_000e18);
+    }
+
+    function test_Claim_SecondClaimTransfersNothing() public {
+        uint256 amount_ = 1 ether;
+        vm.deal(user, amount_);
+        vm.warp(startingTime + 1 days);
+
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+        vm.warp(endingTime);
+
+        vm.prank(user);
+        presale.claim();
+
+        uint256 userTokenBalance_ = presale.userTokenBalance(user);
+        uint256 userSaleTokenBalance_ = saleToken.balanceOf(user);
+        assertEq(userTokenBalance_, 0);
+        assertEq(userSaleTokenBalance_, 600_000e18);
+
+        vm.prank(user);
+        presale.claim();
+
+        uint256 userSaleTokenBalance2_ = saleToken.balanceOf(user);
+        assertEq(userSaleTokenBalance_, userSaleTokenBalance2_);
+    }
+
+    function test_Claim_ZeroBalanceDoesNotRevert() public {
+        vm.warp(endingTime + 1 days);
+
+        vm.prank(user);
+        presale.claim();
+
+        uint256 userTokenBalance_ = presale.userTokenBalance(user);
+        uint256 userSaleTokenBalance_ = saleToken.balanceOf(user);
+        assertEq(userTokenBalance_, 0);
+        assertEq(userSaleTokenBalance_, 0);
+    }
+
+    function test_Claim_BlacklistedUserCanClaim() public {
+        uint256 amount_ = 1 ether;
+        vm.deal(user, amount_);
+        vm.warp(startingTime + 1 days);
+
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+
+        vm.prank(owner);
+        presale.blacklist(user);
+        vm.warp(endingTime);
+
+        vm.prank(user);
+        presale.claim();
+
+        uint256 userTokenBalance_ = presale.userTokenBalance(user);
+        uint256 userSaleTokenBalance_ = saleToken.balanceOf(user);
+        assertEq(userTokenBalance_, 0);
+        assertEq(userSaleTokenBalance_, 600_000e18);
+    }
+
+    function test_Claim_RevertWhen_BeforeEnding() public {
+        vm.warp(endingTime - 1);
+
+        vm.expectRevert(Presale.NotEnded.selector);
+        vm.prank(user);
+        presale.claim();
+    }
+
+    // Utils
+
+    function test_Blacklist_SetsFlag() public {
+        vm.prank(owner);
+        presale.blacklist(user);
+
+        assertTrue(presale.isBlacklisted(user));
+    }
+
+    function test_RemoveBlacklist_ClearsFlag() public {
+        vm.prank(owner);
+        presale.blacklist(user);
+        assertTrue(presale.isBlacklisted(user));
+
+        vm.prank(owner);
+        presale.removeBlacklist(user);
+        assertFalse(presale.isBlacklisted(user));
+    }
+
+    function test_EmergencyERC20Withdraw_TransfersToOwner() public {
+        uint256 amount_ = 1_000e6;
+        usdc.mint(address(presale), amount_);
+        uint256 ownerUsdcBalanceBefore_ = usdc.balanceOf(owner);
+
+        vm.prank(owner);
+        presale.emergencyERC20Withdraw(address(usdc), amount_);
+
+        uint256 ownerUsdcBalanceAfter_ = usdc.balanceOf(owner);
+        uint256 presaleUsdcBalance_ = usdc.balanceOf(address(presale));
+        assertEq(ownerUsdcBalanceAfter_ - ownerUsdcBalanceBefore_, amount_);
+        assertEq(presaleUsdcBalance_, 0);
+    }
+
+    function test_EmergencyETHWithdraw_TransfersToOwner() public {
+        uint256 amount_ = 1_000e6;
+        vm.deal(address(presale), amount_);
+        uint256 ownerBalanceBefore_ = owner.balance;
+
+        vm.prank(owner);
+        presale.emergencyETHWithdraw();
+
+        uint256 ownerBalanceAfter_ = owner.balance;
+        uint256 presaleBalance_ = address(presale).balance;
+        assertEq(ownerBalanceAfter_ - ownerBalanceBefore_, amount_);
+        assertEq(presaleBalance_, 0);
+    }
+
+    function test_GetEtherPrice_ScalesTo18Decimals() public view {
+        uint256 price_ = presale.getEtherPrice();
+        assertEq(price_, 3_000e18);
+    }
+
+    function test_Blacklist_RevertWhen_NotOwner() public {
+        address randomUser_ = makeAddr("randomUser");
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+        vm.prank(user);
+        presale.blacklist(randomUser_);
+    }
+
+    function test_RemoveBlacklist_RevertWhen_NotOwner() public {
+        address randomUser_ = makeAddr("randomUser");
+        vm.prank(owner);
+        presale.blacklist(randomUser_);
+
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+        vm.prank(user);
+        presale.removeBlacklist(randomUser_);
+    }
+
+    function test_EmergencyERC20Withdraw_RevertWhen_NotOwner() public {
+        uint256 amount_ = 1_000e6;
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+        vm.prank(user);
+        presale.emergencyERC20Withdraw(address(usdc), amount_);
+    }
+
+    function test_EmergencyETHWithdraw_RevertWhen_NotOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+        vm.prank(user);
+        presale.emergencyETHWithdraw();
+    }
+
+    // helpers
 
     function _phases() internal view returns (uint256[][3] memory phases_) {
         phases_[0] = new uint256[](3);
