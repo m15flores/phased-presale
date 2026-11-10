@@ -10,11 +10,13 @@ contract MockAggregator is IAggregator {
     uint256 public startedAt;
     uint256 public updatedAt;
     uint80 public answeredInRound;
+    uint8 public decimals;
 
     constructor(int256 answer_) {
         answer = answer_;
         startedAt = block.timestamp;
         updatedAt = block.timestamp;
+        decimals = 8;
     }
 
     function setAnswer(int256 answer_) external {
@@ -39,5 +41,9 @@ contract MockAggregator is IAggregator {
         startedAt_ = startedAt;
         updatedAt_ = updatedAt;
         answeredInRound_ = answeredInRound;
+    }
+
+    function setDecimals(uint8 decimals_) external {
+        decimals = decimals_;
     }
 }
