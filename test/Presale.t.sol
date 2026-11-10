@@ -17,14 +17,14 @@ contract PresaleTest is Test {
     address user;
     address owner;
     address fundsReceiver;
-    uint256 maxAgePrice;
+    uint256 maxPriceAge;
     uint256 maxSellingAmount;
     uint256 startingTime;
     uint256 endingTime;
     Presale presale;
 
     int256 internal constant ETH_PRICE = 3_000e8;
-    uint256 internal constant MAX_AGE_PRICE = 25 hours;
+    uint256 internal constant MAX_PRICE_AGE = 25 hours;
     uint256 internal constant MAX_SELLING_AMOUNT = 3_000_000e18;
     uint256 internal constant START_DELAY = 1 days;
     uint256 internal constant PHASE_DURATION = 10 days;
@@ -45,7 +45,7 @@ contract PresaleTest is Test {
         usdc = new MockERC20("Mock USDC", "USDC", 6);
         usdt18 = new MockERC20("Mock USDT 18 dec", "USDT18", 18);
 
-        maxAgePrice = MAX_AGE_PRICE;
+        maxPriceAge = MAX_PRICE_AGE;
         maxSellingAmount = MAX_SELLING_AMOUNT;
         startingTime = block.timestamp + START_DELAY;
         endingTime = startingTime + 3 * PHASE_DURATION;
@@ -61,7 +61,7 @@ contract PresaleTest is Test {
             address(usdc),
             fundsReceiver,
             address(aggregator),
-            maxAgePrice,
+            maxPriceAge,
             maxSellingAmount,
             startingTime,
             endingTime,
@@ -136,7 +136,7 @@ contract PresaleTest is Test {
             address(usdc),
             fundsReceiver,
             address(aggregator),
-            maxAgePrice,
+            maxPriceAge,
             maxSellingAmount,
             startingTime,
             endingTime,
@@ -429,6 +429,21 @@ contract PresaleTest is Test {
         assertEq(totalSoldAfter_ - totalSoldBefore_, 0);
     }
 
+    function test_BuyWithEther_AllowsPriceAtMaxAge() public {
+        uint256 amount_ = 1 ether;
+        uint256 updatedAt_ = startingTime;
+        vm.deal(user, amount_);
+        aggregator.setUpdatedAt(updatedAt_);
+        vm.warp(updatedAt_ + MAX_PRICE_AGE + 1);
+        uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
+
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+
+        uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
+        assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 600_000e18);
+    }
+
     function test_BuyWithEther_EmitsTokenBuy() public {
         uint256 amount_ = 1 ether;
         vm.deal(user, amount_);
@@ -500,7 +515,7 @@ contract PresaleTest is Test {
             address(usdc),
             address(rejecter_),
             address(aggregator),
-            maxAgePrice,
+            maxPriceAge,
             maxSellingAmount,
             startingTime,
             endingTime,
@@ -535,6 +550,18 @@ contract PresaleTest is Test {
         vm.deal(user, amount_);
 
         vm.expectRevert(Presale.InvalidPrice.selector);
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+    }
+
+    function test_BuyWithEther_RevertWhen_PriceIsStale() public {
+        uint256 amount_ = 1 ether;
+        uint256 updatedAt_ = startingTime;
+        vm.deal(user, amount_);
+        aggregator.setUpdatedAt(updatedAt_);
+        vm.warp(updatedAt_ + MAX_PRICE_AGE + 1);
+
+        vm.expectRevert(Presale.StalePrice.selector);
         vm.prank(user);
         presale.buyWithEther{value: amount_}();
     }
@@ -736,7 +763,7 @@ contract PresaleTest is Test {
             address(usdc),
             fundsReceiver,
             address(aggregator),
-            maxAgePrice,
+            maxPriceAge,
             maxSellingAmount,
             start_,
             end_,
