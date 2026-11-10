@@ -35,6 +35,7 @@ contract Presale is Ownable {
     error InvalidToken();
     error SoldOut();
     error TransferFailed();
+    error InvalidPrice();
 
     constructor(
         address saleTokenAddress_,
@@ -146,7 +147,9 @@ contract Presale is Ownable {
 
     function getEtherPrice() public view returns (uint256) {
         (, int256 price,,,) = IAggregator(dataFeedAddress).latestRoundData();
+        if (price <= 0) revert InvalidPrice();
         price = price * 10 ** 10;
+        // forge-lint: disable-next-line(unsafe-typecast)
         return uint256(price);
     }
 

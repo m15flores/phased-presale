@@ -507,6 +507,32 @@ contract PresaleTest is Test {
         presaleRejecting_.buyWithEther{value: amount_}();
     }
 
+    function test_BuyWithEther_RevertWhen_PriceIsZero() public {
+        int256 answer_ = 0;
+        uint256 amount_ = 1 ether;
+        aggregator.setAnswer(answer_);
+
+        vm.warp(startingTime);
+        vm.deal(user, amount_);
+
+        vm.expectRevert(Presale.InvalidPrice.selector);
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+    }
+
+    function test_BuyWithEther_RevertWhen_PriceIsNegative() public {
+        int256 answer_ = -1;
+        uint256 amount_ = 1 ether;
+        aggregator.setAnswer(answer_);
+
+        vm.warp(startingTime);
+        vm.deal(user, amount_);
+
+        vm.expectRevert(Presale.InvalidPrice.selector);
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+    }
+
     // claim
 
     function test_Claim_TransfersBalanceAfterEnd() public {
