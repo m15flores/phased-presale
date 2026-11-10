@@ -10,6 +10,19 @@ import "../src/Presale.sol";
 import "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 contract PresaleTest is Test {
+    struct PresaleParams {
+        address saleToken;
+        address usdt;
+        address usdc;
+        address fundsReceiver;
+        address dataFeed;
+        uint256 maxPriceAge;
+        uint256 maxSellingAmount;
+        uint256 startingTime;
+        uint256 endingTime;
+        uint256[][3] phases;
+    }
+
     MockERC20 usdc;
     MockERC20 usdt18;
     MockERC20 saleToken;
@@ -55,20 +68,9 @@ contract PresaleTest is Test {
 
         address presaleAddress_ = vm.computeCreateAddress(owner, vm.getNonce(owner));
         saleToken.approve(presaleAddress_, maxSellingAmount);
-        presale = new Presale(
-            address(saleToken),
-            address(usdt18),
-            address(usdc),
-            fundsReceiver,
-            address(aggregator),
-            maxPriceAge,
-            maxSellingAmount,
-            startingTime,
-            endingTime,
-            _phases()
-        );
 
         vm.stopPrank();
+        presale = _newPresale(startingTime, endingTime);
     }
 
     // Constructor
@@ -122,26 +124,16 @@ contract PresaleTest is Test {
     function test_Constructor_RevertsWhen_NoAllowance() public {
         MockERC20 tokenNotApproved_ = new MockERC20("Token Not Approved", "TKNA", 6);
         tokenNotApproved_.mint(owner, MAX_SELLING_AMOUNT);
-
-        vm.prank(owner);
+        PresaleParams memory presaleParams_ = _defaultParams();
+        presaleParams_.saleToken = address(tokenNotApproved_);
         address presaleAddress_ = vm.computeCreateAddress(owner, vm.getNonce(owner));
+
         vm.expectRevert(
             abi.encodeWithSelector(
                 IERC20Errors.ERC20InsufficientAllowance.selector, presaleAddress_, 0, MAX_SELLING_AMOUNT
             )
         );
-        new Presale(
-            address(tokenNotApproved_),
-            address(usdt18),
-            address(usdc),
-            fundsReceiver,
-            address(aggregator),
-            maxPriceAge,
-            maxSellingAmount,
-            startingTime,
-            endingTime,
-            _phases()
-        );
+        _deployPresale(presaleParams_);
     }
 
     // BuyWithStable
@@ -555,24 +547,14 @@ contract PresaleTest is Test {
         vm.deal(user, amount_);
         _warpTo(startingTime + 1 days);
 
+        PresaleParams memory presaleParams_ = _defaultParams();
+        presaleParams_.fundsReceiver = address(rejecter_);
         saleToken.mint(owner, MAX_SELLING_AMOUNT);
         address presaleAddress_ = vm.computeCreateAddress(owner, vm.getNonce(owner));
 
-        vm.startPrank(owner);
+        vm.prank(owner);
         saleToken.approve(presaleAddress_, MAX_SELLING_AMOUNT);
-        Presale presaleRejecting_ = new Presale(
-            address(saleToken),
-            address(usdt18),
-            address(usdc),
-            address(rejecter_),
-            address(aggregator),
-            maxPriceAge,
-            maxSellingAmount,
-            startingTime,
-            endingTime,
-            _phases()
-        );
-        vm.stopPrank();
+        Presale presaleRejecting_ = _deployPresale(presaleParams_);
 
         vm.expectRevert(Presale.TransferFailed.selector);
         vm.prank(user);
@@ -838,19 +820,10 @@ contract PresaleTest is Test {
     }
 
     function _newPresale(uint256 start_, uint256 end_) internal returns (Presale presale_) {
-        vm.prank(owner);
-        presale_ = new Presale(
-            address(saleToken),
-            address(usdt18),
-            address(usdc),
-            fundsReceiver,
-            address(aggregator),
-            maxPriceAge,
-            maxSellingAmount,
-            start_,
-            end_,
-            _phases()
-        );
+        PresaleParams memory presaleParams_ = _defaultParams();
+        presaleParams_.startingTime = start_;
+        presaleParams_.endingTime = end_;
+        presale_ = _deployPresale(presaleParams_);
     }
 
     function _buyWithStable(MockERC20 stable_, address buyer_, uint256 amount_) internal {
@@ -864,5 +837,34 @@ contract PresaleTest is Test {
     function _warpTo(uint256 timestamp_) internal {
         vm.warp(timestamp_);
         aggregator.setUpdatedAt(timestamp_);
+    }
+
+    function _defaultParams() internal view returns (PresaleParams memory p_) {
+        p_.saleToken = address(saleToken);
+        p_.usdt = address(usdt18);
+        p_.usdc = address(usdc);
+        p_.fundsReceiver = fundsReceiver;
+        p_.dataFeed = address(aggregator);
+        p_.maxPriceAge = maxPriceAge;
+        p_.maxSellingAmount = maxSellingAmount;
+        p_.startingTime = startingTime;
+        p_.endingTime = endingTime;
+        p_.phases = _phases();
+    }
+
+    function _deployPresale(PresaleParams memory p_) internal returns (Presale presale_) {
+        vm.prank(owner);
+        presale_ = new Presale(
+            p_.saleToken,
+            p_.usdt,
+            p_.usdc,
+            p_.fundsReceiver,
+            p_.dataFeed,
+            p_.maxPriceAge,
+            p_.maxSellingAmount,
+            p_.startingTime,
+            p_.endingTime,
+            p_.phases
+        );
     }
 }
