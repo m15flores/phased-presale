@@ -434,7 +434,7 @@ contract PresaleTest is Test {
         uint256 updatedAt_ = startingTime;
         vm.deal(user, amount_);
         aggregator.setUpdatedAt(updatedAt_);
-        vm.warp(updatedAt_ + MAX_PRICE_AGE + 1);
+        vm.warp(updatedAt_ + MAX_PRICE_AGE);
         uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
 
         vm.prank(user);
