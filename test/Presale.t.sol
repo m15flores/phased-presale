@@ -105,7 +105,7 @@ contract PresaleTest is Test {
         assertEq(saleToken.balanceOf(owner), 0);
     }
 
-    function test_Constructor_RevertsWhen_StartingTimeAfterEndingTime() public {
+    function test_Constructor_RevertWhen_StartingTimeAfterEndingTime() public {
         uint256 endingTime_ = block.timestamp + 1 days;
         uint256 startingTime_ = endingTime_ + 1 days;
 
@@ -113,7 +113,7 @@ contract PresaleTest is Test {
         _newPresale(startingTime_, endingTime_);
     }
 
-    function test_Constructor_RevertsWhen_StartingTimeEqualsEndingTime() public {
+    function test_Constructor_RevertWhen_StartingTimeEqualsEndingTime() public {
         uint256 startingTime_ = block.timestamp + 1 days;
         uint256 endingTime_ = startingTime_;
 
@@ -121,7 +121,7 @@ contract PresaleTest is Test {
         _newPresale(startingTime_, endingTime_);
     }
 
-    function test_Constructor_RevertsWhen_NoAllowance() public {
+    function test_Constructor_RevertWhen_NoAllowance() public {
         MockERC20 tokenNotApproved_ = new MockERC20("Token Not Approved", "TKNA", 6);
         tokenNotApproved_.mint(owner, MAX_SELLING_AMOUNT);
         PresaleParams memory presaleParams_ = _defaultParams();
@@ -184,7 +184,7 @@ contract PresaleTest is Test {
         _deployPresale(presaleParams_);
     }
 
-    function test_Constructor_RevertWhen_PhasesTimesAreNotIncreasing() public {
+    function test_Constructor_RevertWhen_PhaseTimesAreNotIncreasing() public {
         PresaleParams memory presaleParams_ = _defaultParams();
         presaleParams_.phases[1][2] = presaleParams_.phases[0][2];
 
@@ -621,7 +621,7 @@ contract PresaleTest is Test {
         presale.buyWithEther{value: amount_}();
     }
 
-    function test_BuyWithEther_RevertWhen_ReceiverEjectsEther() public {
+    function test_BuyWithEther_RevertWhen_ReceiverRejectsEther() public {
         RejectEther rejecter_ = new RejectEther();
         uint256 amount_ = 1 ether;
         vm.deal(user, amount_);

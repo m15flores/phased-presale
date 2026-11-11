@@ -186,11 +186,12 @@ contract Presale is Ownable {
     }
 
     function _advancePhase() private {
-        // forge-lint: disable-next-line(block-timestamp)
+        // forge-lint: disable-start(block-timestamp)
         while (
             currentPhase < 2 && (block.timestamp >= phases[currentPhase][2] || totalSold >= phases[currentPhase][0])
         ) {
             currentPhase++;
         }
+        // forge-lint: disable-end(block-timestamp)
     }
 }
