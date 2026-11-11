@@ -49,6 +49,7 @@ contract Presale is Ownable2Step {
     error ZeroAddress();
     error AmountExceedsSurplus();
     error RenounceDisabled();
+    error SlippageExceeded();
 
     constructor(
         address saleTokenAddress_,
@@ -110,7 +111,7 @@ contract Presale is Ownable2Step {
      * @param tokenUsedToBuy_  token's address
      * @param amount_  amount of tokens for buying
      */
-    function buyWithStable(address tokenUsedToBuy_, uint256 amount_) external {
+    function buyWithStable(address tokenUsedToBuy_, uint256 amount_, uint256 minTokensOut_) external {
         if (isBlacklisted[msg.sender]) revert UserBlacklisted();
         // forge-lint: disable-next-line(block-timestamp)
         if (block.timestamp < startingTime) revert NotStarted();
@@ -126,6 +127,7 @@ contract Presale is Ownable2Step {
             tokenAmountToReceive =
                 amount_ * 10 ** (18 - ERC20(tokenUsedToBuy_).decimals()) * 1e6 / phases[currentPhase][1];
         }
+        if (tokenAmountToReceive < minTokensOut_) revert SlippageExceeded();
 
         totalSold += tokenAmountToReceive;
         if (totalSold > maxSellingAmount) revert SoldOut();
@@ -141,7 +143,7 @@ contract Presale is Ownable2Step {
         emit TokenBuy(msg.sender, tokenAmountToReceive);
     }
 
-    function buyWithEther() external payable {
+    function buyWithEther(uint256 minTokensOut_) external payable {
         if (isBlacklisted[msg.sender]) revert UserBlacklisted();
         // forge-lint: disable-next-line(block-timestamp)
         if (block.timestamp < startingTime) revert NotStarted();
@@ -151,6 +153,7 @@ contract Presale is Ownable2Step {
         _advancePhase();
         uint256 usdValue = msg.value * getEtherPrice() / 1e18;
         uint256 tokenAmountToReceive = usdValue * 1e6 / phases[currentPhase][1];
+        if (tokenAmountToReceive < minTokensOut_) revert SlippageExceeded();
 
         totalSold += tokenAmountToReceive;
         if (totalSold > maxSellingAmount) revert SoldOut();

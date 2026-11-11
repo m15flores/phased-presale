@@ -255,7 +255,7 @@ contract PresaleTest is Test {
 
         vm.startPrank(user);
         usdc.approve(address(presale), amount_);
-        presale.buyWithStable(address(usdc), amount_);
+        presale.buyWithStable(address(usdc), amount_, 0);
         vm.stopPrank();
 
         uint256 totalSoldAfter_ = presale.totalSold();
@@ -349,6 +349,20 @@ contract PresaleTest is Test {
         assertEq(userTokenBalance_, 50_000e18);
     }
 
+    function test_BuyWithStable_AllowsExactMinTokensOut() public {
+        uint256 amount_ = 1e6;
+        deal(address(usdc), user, amount_);
+        vm.prank(user);
+        usdc.approve(address(presale), amount_);
+        vm.warp(startingTime);
+
+        vm.prank(user);
+        presale.buyWithStable(address(usdc), amount_, 200e18);
+
+        uint256 userTokenBalance_ = presale.userTokenBalance(user);
+        assertEq(userTokenBalance_, 200e18);
+    }
+
     function test_BuyWithStable_EmitsTokenBuy() public {
         vm.warp(startingTime + 1 days);
         uint256 amount_ = 1_000e6;
@@ -360,7 +374,7 @@ contract PresaleTest is Test {
 
         vm.expectEmit(false, false, false, true, address(presale));
         emit Presale.TokenBuy(user, 200_000e18);
-        presale.buyWithStable(address(usdc), amount_);
+        presale.buyWithStable(address(usdc), amount_, 0);
 
         vm.stopPrank();
     }
@@ -374,7 +388,7 @@ contract PresaleTest is Test {
 
         vm.expectRevert(Presale.UserBlacklisted.selector);
         vm.prank(user);
-        presale.buyWithStable(address(usdc), amount_);
+        presale.buyWithStable(address(usdc), amount_, 0);
     }
 
     function test_BuyWithStable_RevertWhen_BuyingBeforeStartingTime() public {
@@ -383,7 +397,7 @@ contract PresaleTest is Test {
 
         vm.expectRevert(Presale.NotStarted.selector);
         vm.prank(user);
-        presale.buyWithStable(address(usdc), amount_);
+        presale.buyWithStable(address(usdc), amount_, 0);
     }
 
     function test_BuyWithStable_RevertWhen_BuyingAfterEndingTime() public {
@@ -392,7 +406,7 @@ contract PresaleTest is Test {
 
         vm.expectRevert(Presale.SaleEnded.selector);
         vm.prank(user);
-        presale.buyWithStable(address(usdc), amount_);
+        presale.buyWithStable(address(usdc), amount_, 0);
     }
 
     function test_BuyWithStable_RevertWhen_InvalidToken() public {
@@ -403,7 +417,7 @@ contract PresaleTest is Test {
 
         vm.expectRevert(Presale.InvalidToken.selector);
         vm.prank(user);
-        presale.buyWithStable(address(invalidToken_), amount_);
+        presale.buyWithStable(address(invalidToken_), amount_, 0);
     }
 
     function test_BuyWithStable_RevertWhen_SoldOut() public {
@@ -413,7 +427,7 @@ contract PresaleTest is Test {
 
         vm.expectRevert(Presale.SoldOut.selector);
         vm.prank(user);
-        presale.buyWithStable(address(usdc), amount_);
+        presale.buyWithStable(address(usdc), amount_, 0);
     }
 
     function test_BuyWithStable_RevertWhen_NoAllowance() public {
@@ -427,7 +441,7 @@ contract PresaleTest is Test {
             abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(presale), 0, amount_)
         );
         vm.prank(buyer_);
-        presale.buyWithStable(address(usdc), amount_);
+        presale.buyWithStable(address(usdc), amount_, 0);
     }
 
     function test_BuyWithStable_RevertWhen_NoBalance() public {
@@ -440,7 +454,7 @@ contract PresaleTest is Test {
 
         vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, buyer_, 0, amount_));
         vm.prank(buyer_);
-        presale.buyWithStable(address(usdc), amount_);
+        presale.buyWithStable(address(usdc), amount_, 0);
     }
 
     function test_BuyWithStable_RevertWhen_PurchaseCrossesPhaseCap() public {
@@ -452,7 +466,7 @@ contract PresaleTest is Test {
         vm.startPrank(user);
         usdc.approve(address(presale), amount_);
         vm.expectRevert(Presale.PhaseCapExceeded.selector);
-        presale.buyWithStable(address(usdc), amount_);
+        presale.buyWithStable(address(usdc), amount_, 0);
         vm.stopPrank();
     }
 
@@ -466,8 +480,32 @@ contract PresaleTest is Test {
         vm.startPrank(user);
         usdc.approve(address(presale), amount_);
         vm.expectRevert(Presale.PhaseCapExceeded.selector);
-        presale.buyWithStable(address(usdc), amount_);
+        presale.buyWithStable(address(usdc), amount_, 0);
         vm.stopPrank();
+    }
+
+    function test_BuyWithStable_RevertWhen_TokensBelowMin() public {
+        uint256 amount_ = 1e6;
+        deal(address(usdc), user, amount_);
+        vm.prank(user);
+        usdc.approve(address(presale), amount_);
+        vm.warp(startingTime);
+
+        vm.expectRevert(Presale.SlippageExceeded.selector);
+        vm.prank(user);
+        presale.buyWithStable(address(usdc), amount_, 200e18 + 1);
+    }
+
+    function test_BuyWithStable_RevertWhen_PhaseAdvancedBeforePurchase() public {
+        uint256 amount_ = 1e6;
+        deal(address(usdc), user, amount_);
+        vm.prank(user);
+        usdc.approve(address(presale), amount_);
+        vm.warp(startingTime + PHASE_DURATION);
+
+        vm.expectRevert(Presale.SlippageExceeded.selector);
+        vm.prank(user);
+        presale.buyWithStable(address(usdc), amount_, 200e18);
     }
 
     // buyWithEther
@@ -480,7 +518,7 @@ contract PresaleTest is Test {
         uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
 
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
 
         uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
         assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 300_000e18);
@@ -495,7 +533,7 @@ contract PresaleTest is Test {
         uint256 balanceFundsReceiverBefore_ = fundsReceiver.balance;
 
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
 
         uint256 totalSoldAfter_ = presale.totalSold();
         uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
@@ -513,7 +551,7 @@ contract PresaleTest is Test {
         uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
 
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
 
         uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
         assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 600_000e18);
@@ -527,7 +565,7 @@ contract PresaleTest is Test {
         uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
 
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
 
         uint256 userTokenBalance_ = presale.userTokenBalance(user);
         uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
@@ -547,7 +585,7 @@ contract PresaleTest is Test {
         uint256 totalSoldBefore_ = presale.totalSold();
 
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
 
         uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
         uint256 totalSoldAfter_ = presale.totalSold();
@@ -564,7 +602,7 @@ contract PresaleTest is Test {
         uint256 userTokenBalanceBefore_ = presale.userTokenBalance(user);
 
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
 
         uint256 userTokenBalanceAfter_ = presale.userTokenBalance(user);
         assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 600_000e18);
@@ -578,7 +616,7 @@ contract PresaleTest is Test {
         vm.expectEmit(false, false, false, true, address(presale));
         emit Presale.TokenBuy(user, 600_000e18);
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
     }
 
     function test_BuyWithEther_RevertWhen_BuyingBeforeStartingTime() public {
@@ -588,7 +626,7 @@ contract PresaleTest is Test {
 
         vm.expectRevert(Presale.NotStarted.selector);
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
     }
 
     function test_BuyWithEther_RevertWhen_BuyingAfterEndingTime() public {
@@ -598,7 +636,7 @@ contract PresaleTest is Test {
 
         vm.expectRevert(Presale.SaleEnded.selector);
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
     }
 
     function test_BuyWithEther_RevertWhen_UserBlacklisted() public {
@@ -611,7 +649,7 @@ contract PresaleTest is Test {
 
         vm.expectRevert(Presale.UserBlacklisted.selector);
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
     }
 
     function test_BuyWithEther_RevertWhen_SoldOut() public {
@@ -621,7 +659,7 @@ contract PresaleTest is Test {
 
         vm.expectRevert(Presale.SoldOut.selector);
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
     }
 
     function test_BuyWithEther_RevertWhen_ReceiverRejectsEther() public {
@@ -643,7 +681,7 @@ contract PresaleTest is Test {
 
         vm.expectRevert(Presale.TransferFailed.selector);
         vm.prank(user);
-        presaleRejecting_.buyWithEther{value: amount_}();
+        presaleRejecting_.buyWithEther{value: amount_}(0);
     }
 
     function test_BuyWithEther_RevertWhen_PriceIsZero() public {
@@ -656,7 +694,7 @@ contract PresaleTest is Test {
 
         vm.expectRevert(Presale.InvalidPrice.selector);
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
     }
 
     function test_BuyWithEther_RevertWhen_PriceIsNegative() public {
@@ -669,7 +707,7 @@ contract PresaleTest is Test {
 
         vm.expectRevert(Presale.InvalidPrice.selector);
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
     }
 
     function test_BuyWithEther_RevertWhen_PriceIsStale() public {
@@ -681,7 +719,7 @@ contract PresaleTest is Test {
 
         vm.expectRevert(Presale.StalePrice.selector);
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
     }
 
     function test_BuyWithEther_RevertWhen_PurchaseCrossesPhaseCap() public {
@@ -692,7 +730,17 @@ contract PresaleTest is Test {
 
         vm.expectRevert(Presale.PhaseCapExceeded.selector);
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
+    }
+
+    function test_BuyWithEther_RevertWhen_TokensBelowMin() public {
+        uint256 amount_ = 1 ether;
+        deal(user, amount_);
+        _warpTo(startingTime);
+
+        vm.expectRevert(Presale.SlippageExceeded.selector);
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}(600_000e18 + 1);
     }
 
     // claim
@@ -703,7 +751,7 @@ contract PresaleTest is Test {
         _warpTo(startingTime + 1 days);
 
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
         uint256 userSaleTokenBalanceBefore_ = saleToken.balanceOf(user);
         uint256 presaleSaleTokenBalanceBefore_ = saleToken.balanceOf(address(presale));
 
@@ -726,7 +774,7 @@ contract PresaleTest is Test {
         _warpTo(startingTime + 1 days);
 
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
         _warpTo(endingTime);
 
         vm.prank(user);
@@ -762,7 +810,7 @@ contract PresaleTest is Test {
         _warpTo(startingTime + 1 days);
 
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
 
         vm.prank(owner);
         presale.blacklist(user);
@@ -824,7 +872,7 @@ contract PresaleTest is Test {
         vm.deal(user, amount_);
 
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
         vm.warp(endingTime + 1);
 
         vm.prank(owner);
@@ -842,7 +890,7 @@ contract PresaleTest is Test {
         vm.deal(user, amount_);
 
         vm.startPrank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
         vm.warp(endingTime + 1);
         presale.claim();
         vm.stopPrank();
@@ -950,7 +998,7 @@ contract PresaleTest is Test {
         vm.deal(user, amount_);
 
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
         vm.warp(endingTime + 1);
 
         vm.expectRevert(Presale.AmountExceedsSurplus.selector);
@@ -964,7 +1012,7 @@ contract PresaleTest is Test {
         vm.deal(user, amount_);
 
         vm.prank(user);
-        presale.buyWithEther{value: amount_}();
+        presale.buyWithEther{value: amount_}(0);
         vm.warp(endingTime);
 
         vm.expectRevert(Presale.NotEnded.selector);
@@ -1012,7 +1060,7 @@ contract PresaleTest is Test {
         stable_.mint(buyer_, amount_);
         vm.startPrank(buyer_);
         stable_.approve(address(presale), amount_);
-        presale.buyWithStable(address(stable_), amount_);
+        presale.buyWithStable(address(stable_), amount_, 0);
         vm.stopPrank();
     }
 
