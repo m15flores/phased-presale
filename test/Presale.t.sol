@@ -200,6 +200,22 @@ contract PresaleTest is Test {
         _deployPresale(presaleParams_);
     }
 
+    function test_Constructor_RevertWhen_MaxPriceAgeIsZero() public {
+        PresaleParams memory presaleParams_ = _defaultParams();
+        presaleParams_.maxPriceAge = 0;
+
+        vm.expectRevert(Presale.ZeroAmount.selector);
+        _deployPresale(presaleParams_);
+    }
+
+    function test_Constructor_RevertWhen_FundsReceiverIsZeroAddress() public {
+        PresaleParams memory presaleParams_ = _defaultParams();
+        presaleParams_.fundsReceiver = address(0);
+
+        vm.expectRevert(Presale.ZeroAddress.selector);
+        _deployPresale(presaleParams_);
+    }
+
     // BuyWithStable
 
     function test_BuyWithStable_Stable18DecimalsReturnsExpectedTokens() public {

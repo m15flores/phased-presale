@@ -43,6 +43,8 @@ contract Presale is Ownable {
     error InvalidPhasePrice();
     error InvalidPhaseCap();
     error InvalidPhaseTime();
+    error ZeroAmount();
+    error ZeroAddress();
 
     constructor(
         address saleTokenAddress_,
@@ -56,6 +58,8 @@ contract Presale is Ownable {
         uint256 endingTime_,
         uint256[][3] memory phases_
     ) Ownable(msg.sender) {
+        if (fundsReceiverAddress_ == address(0)) revert ZeroAddress();
+        if (maxPriceAge_ == 0) revert ZeroAmount();
         if (startingTime_ >= endingTime_) revert IncorrectTimes();
 
         uint256 previousCap_;
