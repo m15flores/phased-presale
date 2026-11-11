@@ -33,6 +33,7 @@ contract Presale is Ownable {
     error IncorrectTimes();
     error UserBlacklisted();
     error NotStarted();
+    error SaleEnded();
     error NotEnded();
     error InvalidToken();
     error SoldOut();
@@ -110,7 +111,10 @@ contract Presale is Ownable {
      */
     function buyWithStable(address tokenUsedToBuy_, uint256 amount_) external {
         if (isBlacklisted[msg.sender]) revert UserBlacklisted();
-        if (block.timestamp < startingTime || endingTime < block.timestamp) revert NotStarted();
+        // forge-lint: disable-next-line(block-timestamp)
+        if (block.timestamp < startingTime) revert NotStarted();
+        // forge-lint: disable-next-line(block-timestamp)
+        if (endingTime < block.timestamp) revert SaleEnded();
         if (tokenUsedToBuy_ != usdtAddress && tokenUsedToBuy_ != usdcAddress) revert InvalidToken();
 
         _advancePhase();
@@ -138,7 +142,10 @@ contract Presale is Ownable {
 
     function buyWithEther() external payable {
         if (isBlacklisted[msg.sender]) revert UserBlacklisted();
-        if (block.timestamp < startingTime || endingTime < block.timestamp) revert NotStarted();
+        // forge-lint: disable-next-line(block-timestamp)
+        if (block.timestamp < startingTime) revert NotStarted();
+        // forge-lint: disable-next-line(block-timestamp)
+        if (endingTime < block.timestamp) revert SaleEnded();
 
         _advancePhase();
         uint256 usdValue = msg.value * getEtherPrice() / 1e18;
@@ -159,6 +166,7 @@ contract Presale is Ownable {
     }
 
     function claim() external {
+        // forge-lint: disable-next-line(block-timestamp)
         if (block.timestamp < endingTime) revert NotEnded();
 
         uint256 amount = userTokenBalance[msg.sender];
@@ -170,6 +178,7 @@ contract Presale is Ownable {
 
     function emergencyERC20Withdraw(address tokenAddress_, uint256 amount_) external onlyOwner {
         if (tokenAddress_ == saleTokenAddress) {
+            // forge-lint: disable-next-line(block-timestamp)
             if (block.timestamp <= endingTime) revert NotEnded();
 
             uint256 owed_ = totalSold - totalClaimed;

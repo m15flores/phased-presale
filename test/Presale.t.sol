@@ -390,7 +390,7 @@ contract PresaleTest is Test {
         vm.warp(endingTime + 1);
         uint256 amount_ = 1_000e6;
 
-        vm.expectRevert(Presale.NotStarted.selector);
+        vm.expectRevert(Presale.SaleEnded.selector);
         vm.prank(user);
         presale.buyWithStable(address(usdc), amount_);
     }
@@ -596,7 +596,7 @@ contract PresaleTest is Test {
         vm.deal(user, amount_);
         _warpTo(endingTime + 1);
 
-        vm.expectRevert(Presale.NotStarted.selector);
+        vm.expectRevert(Presale.SaleEnded.selector);
         vm.prank(user);
         presale.buyWithEther{value: amount_}();
     }
