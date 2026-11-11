@@ -2,13 +2,13 @@
 
 pragma solidity 0.8.34;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable2Step.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IAggregator.sol";
 
-contract Presale is Ownable {
+contract Presale is Ownable2Step {
     using SafeERC20 for IERC20;
 
     address public usdtAddress;
@@ -48,6 +48,7 @@ contract Presale is Ownable {
     error ZeroAmount();
     error ZeroAddress();
     error AmountExceedsSurplus();
+    error RenounceDisabled();
 
     constructor(
         address saleTokenAddress_,
@@ -202,6 +203,10 @@ contract Presale is Ownable {
         if (block.timestamp > updatedAt + maxPriceAge) revert StalePrice();
         // forge-lint: disable-next-line(unsafe-typecast)
         return (uint256(price) * 1e18) / 10 ** feed_.decimals();
+    }
+
+    function renounceOwnership() public view override onlyOwner {
+        revert RenounceDisabled();
     }
 
     function _advancePhase() private {

@@ -897,6 +897,29 @@ contract PresaleTest is Test {
         assertEq(price_, 3_000e18);
     }
 
+    function test_TransferOwnership_KeepsOwnerUntilAccepted() public {
+        address newOwner_ = makeAddr("newOwner");
+
+        vm.prank(owner);
+        presale.transferOwnership(newOwner_);
+
+        assertEq(presale.owner(), owner);
+        assertEq(presale.pendingOwner(), newOwner_);
+    }
+
+    function test_AcceptOwnership_TransfersOwnership() public {
+        address newOwner_ = makeAddr("newOwner");
+
+        vm.prank(owner);
+        presale.transferOwnership(newOwner_);
+
+        vm.prank(newOwner_);
+        presale.acceptOwnership();
+
+        assertEq(presale.owner(), newOwner_);
+        assertEq(presale.pendingOwner(), address(0));
+    }
+
     function test_Blacklist_RevertWhen_NotOwner() public {
         address randomUser_ = makeAddr("randomUser");
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
@@ -953,6 +976,12 @@ contract PresaleTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
         vm.prank(user);
         presale.emergencyETHWithdraw();
+    }
+
+    function test_RenounceOwnership_RevertWhen_Called() public {
+        vm.expectRevert(Presale.RenounceDisabled.selector);
+        vm.prank(owner);
+        presale.renounceOwnership();
     }
 
     // helpers
