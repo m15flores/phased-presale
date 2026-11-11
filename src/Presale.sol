@@ -42,6 +42,7 @@ contract Presale is Ownable {
     error InvalidPhaseShape();
     error InvalidPhasePrice();
     error InvalidPhaseCap();
+    error InvalidPhaseTime();
 
     constructor(
         address saleTokenAddress_,
@@ -55,14 +56,20 @@ contract Presale is Ownable {
         uint256 endingTime_,
         uint256[][3] memory phases_
     ) Ownable(msg.sender) {
+        if (startingTime_ >= endingTime_) revert IncorrectTimes();
+
         uint256 previousCap_;
-        for (uint256 i = 0; i < phases.length; i++) {
+        uint256 previousEnd_ = startingTime_;
+        for (uint256 i = 0; i < phases_.length; i++) {
             if (phases_[i].length != 3) revert InvalidPhaseShape();
             if (phases_[i][1] == 0) revert InvalidPhasePrice();
             if (phases_[i][0] <= previousCap_) revert InvalidPhaseCap();
+            if (phases_[i][2] <= previousEnd_) revert InvalidPhaseTime();
             previousCap_ = phases_[i][0];
+            previousEnd_ = phases_[i][2];
         }
         if (previousCap_ != maxSellingAmount_) revert InvalidPhaseCap();
+        if (previousEnd_ > endingTime_) revert InvalidPhaseTime();
 
         saleTokenAddress = saleTokenAddress_;
         usdtAddress = usdtAddress_;
@@ -75,7 +82,6 @@ contract Presale is Ownable {
         endingTime = endingTime_;
         phases = phases_;
 
-        if (startingTime >= endingTime) revert IncorrectTimes();
         IERC20(saleTokenAddress).safeTransferFrom(msg.sender, address(this), maxSellingAmount);
     }
 
