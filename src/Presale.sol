@@ -23,6 +23,7 @@ contract Presale is Ownable {
 
     uint256 public totalSold;
     uint256 public currentPhase;
+    uint256 public totalClaimed;
     uint256 public immutable maxPriceAge;
     mapping(address => bool) public isBlacklisted;
     mapping(address => uint256) public userTokenBalance;
@@ -45,6 +46,7 @@ contract Presale is Ownable {
     error InvalidPhaseTime();
     error ZeroAmount();
     error ZeroAddress();
+    error AmountExceedsSurplus();
 
     constructor(
         address saleTokenAddress_,
@@ -161,11 +163,19 @@ contract Presale is Ownable {
 
         uint256 amount = userTokenBalance[msg.sender];
         delete userTokenBalance[msg.sender];
+        totalClaimed += amount;
 
         IERC20(saleTokenAddress).safeTransfer(msg.sender, amount);
     }
 
     function emergencyERC20Withdraw(address tokenAddress_, uint256 amount_) external onlyOwner {
+        if (tokenAddress_ == saleTokenAddress) {
+            if (block.timestamp <= endingTime) revert NotEnded();
+
+            uint256 owed_ = totalSold - totalClaimed;
+            uint256 surplus_ = IERC20(tokenAddress_).balanceOf(address(this)) - owed_;
+            if (amount_ > surplus_) revert AmountExceedsSurplus();
+        }
         IERC20(tokenAddress_).safeTransfer(msg.sender, amount_);
     }
 

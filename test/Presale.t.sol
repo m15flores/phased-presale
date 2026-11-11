@@ -818,6 +818,46 @@ contract PresaleTest is Test {
         assertEq(presaleUsdcBalance_, 0);
     }
 
+    function test_EmergencyERC20Withdraw_TransfersSaleTokenSurplusAfterEnd() public {
+        uint256 amount_ = 1 ether;
+        _warpTo(startingTime + 1 days);
+        vm.deal(user, amount_);
+
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+        vm.warp(endingTime + 1);
+
+        vm.prank(owner);
+        presale.emergencyERC20Withdraw(address(saleToken), 2_400_000e18);
+
+        uint256 ownerSaleTokenBalance_ = saleToken.balanceOf(owner);
+        uint256 presaleSaleTokenBalance_ = saleToken.balanceOf(address(presale));
+        assertEq(ownerSaleTokenBalance_, 2_400_000e18);
+        assertEq(presaleSaleTokenBalance_, 600_000e18);
+    }
+
+    function test_EmergencyERC20Withdraw_TransfersSaleTokenSurplusAfterClaim() public {
+        uint256 amount_ = 1 ether;
+        _warpTo(startingTime + 1 days);
+        vm.deal(user, amount_);
+
+        vm.startPrank(user);
+        presale.buyWithEther{value: amount_}();
+        vm.warp(endingTime + 1);
+        presale.claim();
+        vm.stopPrank();
+
+        vm.prank(owner);
+        presale.emergencyERC20Withdraw(address(saleToken), 2_400_000e18);
+
+        uint256 ownerSaleTokenBalance_ = saleToken.balanceOf(owner);
+        uint256 presaleSaleTokenBalance_ = saleToken.balanceOf(address(presale));
+        uint256 userSaleTokenBalance_ = saleToken.balanceOf(user);
+        assertEq(ownerSaleTokenBalance_, 2_400_000e18);
+        assertEq(presaleSaleTokenBalance_, 0);
+        assertEq(userSaleTokenBalance_, 600_000e18);
+    }
+
     function test_EmergencyETHWithdraw_TransfersToOwner() public {
         uint256 amount_ = 1_000e6;
         vm.deal(address(presale), amount_);
@@ -879,6 +919,34 @@ contract PresaleTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
         vm.prank(user);
         presale.emergencyERC20Withdraw(address(usdc), amount_);
+    }
+
+    function test_EmergencyERC20Withdraw_RevertWhen_SaleTokenAmountExceedsSurplus() public {
+        uint256 amount_ = 1 ether;
+        _warpTo(startingTime + 1 days);
+        vm.deal(user, amount_);
+
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+        vm.warp(endingTime + 1);
+
+        vm.expectRevert(Presale.AmountExceedsSurplus.selector);
+        vm.prank(owner);
+        presale.emergencyERC20Withdraw(address(saleToken), 2_400_000e18 + 1);
+    }
+
+    function test_EmergencyERC20Withdraw_RevertWhen_SaleTokenBeforeEnd() public {
+        uint256 amount_ = 1 ether;
+        _warpTo(startingTime + 1 days);
+        vm.deal(user, amount_);
+
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}();
+        vm.warp(endingTime);
+
+        vm.expectRevert(Presale.NotEnded.selector);
+        vm.prank(owner);
+        presale.emergencyERC20Withdraw(address(saleToken), 1);
     }
 
     function test_EmergencyETHWithdraw_RevertWhen_NotOwner() public {
