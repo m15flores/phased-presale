@@ -363,7 +363,7 @@ contract PresaleTest is Test {
         assertEq(userTokenBalance_, 200e18);
     }
 
-    function test_BuyWithStable_EmitsTokenBuy() public {
+    function test_BuyWithStable_EmitsTokenPurchased() public {
         vm.warp(startingTime + 1 days);
         uint256 amount_ = 1_000e6;
 
@@ -372,8 +372,24 @@ contract PresaleTest is Test {
         vm.startPrank(user);
         usdc.approve(address(presale), amount_);
 
-        vm.expectEmit(false, false, false, true, address(presale));
-        emit Presale.TokenBuy(user, 200_000e18);
+        vm.expectEmit(true, true, false, true, address(presale));
+        emit Presale.TokenPurchased(user, address(usdc), amount_, 200_000e18, 0);
+        presale.buyWithStable(address(usdc), amount_, 0);
+
+        vm.stopPrank();
+    }
+
+    function test_BuyWithStable_EmitsTokenPurchasedWhenPurchaseFillsPhaseCap() public {
+        vm.warp(startingTime);
+        uint256 amount_ = 5_000e6;
+
+        usdc.mint(user, amount_);
+
+        vm.startPrank(user);
+        usdc.approve(address(presale), amount_);
+
+        vm.expectEmit(true, true, false, true, address(presale));
+        emit Presale.TokenPurchased(user, address(usdc), amount_, PHASE_0_CAP, 0);
         presale.buyWithStable(address(usdc), amount_, 0);
 
         vm.stopPrank();
@@ -608,13 +624,13 @@ contract PresaleTest is Test {
         assertEq(userTokenBalanceAfter_ - userTokenBalanceBefore_, 600_000e18);
     }
 
-    function test_BuyWithEther_EmitsTokenBuy() public {
+    function test_BuyWithEther_EmitsTokenPurchased() public {
         uint256 amount_ = 1 ether;
         vm.deal(user, amount_);
         _warpTo(startingTime + 1 days);
 
-        vm.expectEmit(false, false, false, true, address(presale));
-        emit Presale.TokenBuy(user, 600_000e18);
+        vm.expectEmit(true, true, false, true, address(presale));
+        emit Presale.TokenPurchased(user, address(0), amount_, 600_000e18, 0);
         vm.prank(user);
         presale.buyWithEther{value: amount_}(0);
     }
@@ -823,6 +839,18 @@ contract PresaleTest is Test {
         uint256 userSaleTokenBalance_ = saleToken.balanceOf(user);
         assertEq(userTokenBalance_, 0);
         assertEq(userSaleTokenBalance_, 600_000e18);
+    }
+
+    function test_Claim_EmitsTokenClaimed() public {
+        uint256 amount_ = 1_000e6;
+        vm.warp(startingTime + 1 days);
+        _buyWithStable(usdc, user, amount_);
+        vm.warp(endingTime);
+
+        vm.expectEmit(true, true, false, true, address(presale));
+        emit Presale.TokenClaimed(user, 200_000e18);
+        vm.prank(user);
+        presale.claim();
     }
 
     function test_Claim_RevertWhen_BeforeEnding() public {

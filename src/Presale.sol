@@ -28,7 +28,10 @@ contract Presale is Ownable2Step {
     mapping(address => bool) public isBlacklisted;
     mapping(address => uint256) public userTokenBalance;
 
-    event TokenBuy(address user, uint256 amount);
+    event TokenPurchased(
+        address indexed buyer, address indexed paymentToken, uint256 paymentAmount, uint256 tokenAmount, uint256 phase
+    );
+    event TokenClaimed(address indexed user, uint256 amount);
 
     error IncorrectTimes();
     error UserBlacklisted();
@@ -120,6 +123,7 @@ contract Presale is Ownable2Step {
         if (tokenUsedToBuy_ != usdtAddress && tokenUsedToBuy_ != usdcAddress) revert InvalidToken();
 
         _advancePhase();
+        uint256 pricedPhase_ = currentPhase;
         uint256 tokenAmountToReceive;
         if (ERC20(tokenUsedToBuy_).decimals() == 18) {
             tokenAmountToReceive = amount_ * 1e6 / phases[currentPhase][1];
@@ -140,7 +144,7 @@ contract Presale is Ownable2Step {
         // Transfer selling tokens
         IERC20(tokenUsedToBuy_).safeTransferFrom(msg.sender, fundsReceiverAddress, amount_);
 
-        emit TokenBuy(msg.sender, tokenAmountToReceive);
+        emit TokenPurchased(msg.sender, tokenUsedToBuy_, amount_, tokenAmountToReceive, pricedPhase_);
     }
 
     function buyWithEther(uint256 minTokensOut_) external payable {
@@ -151,6 +155,7 @@ contract Presale is Ownable2Step {
         if (endingTime < block.timestamp) revert SaleEnded();
 
         _advancePhase();
+        uint256 pricedPhase_ = currentPhase;
         uint256 usdValue = msg.value * getEtherPrice() / 1e18;
         uint256 tokenAmountToReceive = usdValue * 1e6 / phases[currentPhase][1];
         if (tokenAmountToReceive < minTokensOut_) revert SlippageExceeded();
@@ -166,7 +171,7 @@ contract Presale is Ownable2Step {
         (bool success,) = fundsReceiverAddress.call{value: msg.value}("");
         require(success, TransferFailed());
 
-        emit TokenBuy(msg.sender, tokenAmountToReceive);
+        emit TokenPurchased(msg.sender, address(0), msg.value, tokenAmountToReceive, pricedPhase_);
     }
 
     function claim() external {
@@ -178,6 +183,8 @@ contract Presale is Ownable2Step {
         totalClaimed += amount;
 
         IERC20(saleTokenAddress).safeTransfer(msg.sender, amount);
+
+        emit TokenClaimed(msg.sender, amount);
     }
 
     function emergencyERC20Withdraw(address tokenAddress_, uint256 amount_) external onlyOwner {
