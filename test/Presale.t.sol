@@ -65,11 +65,14 @@ contract PresaleTest is Test {
         saleToken.mint(owner, maxSellingAmount);
 
         vm.startPrank(owner);
-
-        address presaleAddress_ = vm.computeCreateAddress(owner, vm.getNonce(owner));
+        uint64 nonce_ = vm.getNonce(owner);
+        address presaleAddress_ = vm.computeCreateAddress(owner, nonce_);
         saleToken.approve(presaleAddress_, maxSellingAmount);
-
         vm.stopPrank();
+
+        // a pranked call may bump the sender's nonce:
+        // pin it so the presale is deployed at the address that was approved
+        vm.setNonceUnsafe(owner, nonce_);
         presale = _newPresale(startingTime, endingTime);
     }
 
@@ -630,10 +633,12 @@ contract PresaleTest is Test {
         PresaleParams memory presaleParams_ = _defaultParams();
         presaleParams_.fundsReceiver = address(rejecter_);
         saleToken.mint(owner, MAX_SELLING_AMOUNT);
-        address presaleAddress_ = vm.computeCreateAddress(owner, vm.getNonce(owner));
+        uint64 nonce_ = vm.getNonce(owner);
+        address presaleAddress_ = vm.computeCreateAddress(owner, nonce_);
 
         vm.prank(owner);
         saleToken.approve(presaleAddress_, MAX_SELLING_AMOUNT);
+        vm.setNonceUnsafe(owner, nonce_);
         Presale presaleRejecting_ = _deployPresale(presaleParams_);
 
         vm.expectRevert(Presale.TransferFailed.selector);
