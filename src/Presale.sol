@@ -185,16 +185,6 @@ contract Presale is Ownable {
         return (uint256(price) * 1e18) / 10 ** feed_.decimals();
     }
 
-    function checkCurrentPhase(uint256 amount_) private returns (uint256 phase) {
-        if (
-            (totalSold + amount_ >= phases[currentPhase][0] || block.timestamp >= phases[currentPhase][2])
-                && currentPhase < 2
-        ) {
-            currentPhase++;
-        }
-        phase = currentPhase;
-    }
-
     function _advancePhase() private {
         // forge-lint: disable-next-line(block-timestamp)
         while (
