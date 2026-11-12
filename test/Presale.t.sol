@@ -740,7 +740,7 @@ contract PresaleTest is Test {
     function testFuzz_BuyWithEther_TokensMatchExactFormula(uint256 amount_, int256 answer_) public {
         amount_ = bound(amount_, 1, 0.1 ether);
         answer_ = bound(answer_, 1e8, 10_000e8);
-        
+
         aggregator.setAnswer(answer_);
         _warpTo(startingTime);
         vm.deal(user, amount_);
