@@ -89,8 +89,9 @@ contract Presale is Ownable2Step {
         if (maxPriceAge_ == 0) revert ZeroAmount();
         if (startingTime_ >= endingTime_) revert IncorrectTimes();
 
-        uint256 previousCap_;
+        uint256 previousCap_ = 0;
         uint256 previousEnd_ = startingTime_;
+        // forge-lint: disable-start(require-revert-in-loop)
         for (uint256 i = 0; i < phases_.length; i++) {
             if (phases_[i].length != 3) revert InvalidPhaseShape();
             if (phases_[i][1] == 0) revert InvalidPhasePrice();
@@ -100,6 +101,7 @@ contract Presale is Ownable2Step {
             previousCap_ = phases_[i][0];
             previousEnd_ = phases_[i][2];
         }
+        // forge-lint: disable-end(require-revert-in-loop)
         if (previousCap_ != maxSellingAmount_) revert InvalidPhaseCap();
         if (previousEnd_ > endingTime_) revert InvalidPhaseTime();
 
@@ -204,6 +206,8 @@ contract Presale is Ownable2Step {
 
         emit TokenPurchased(msg.sender, address(0), msg.value, tokenAmountToReceive, pricedPhase_);
 
+        // receiver is fixed at deployment and has no setter
+        // forge-lint: disable-next-line(arbitrary-send-eth)
         (bool success,) = fundsReceiverAddress.call{value: msg.value}("");
         require(success, TransferFailed());
     }
@@ -243,6 +247,7 @@ contract Presale is Ownable2Step {
 
     function getEtherPrice() public view returns (uint256) {
         IAggregator feed_ = IAggregator(dataFeedAddress);
+        // forge-lint: disable-next-line(unused-return)
         (, int256 price,, uint256 updatedAt,) = feed_.latestRoundData();
         if (price <= 0) revert InvalidPrice();
         // forge-lint: disable-next-line(block-timestamp)
