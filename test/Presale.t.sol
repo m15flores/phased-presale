@@ -408,7 +408,7 @@ contract PresaleTest is Test {
         presale.buyWithStable(address(usdc), amount_, 0);
         vm.stopPrank();
     }
-    
+
     function test_BuyWithStable_EmitsPhaseAdvancedWhenCapReached() public {
         vm.warp(startingTime);
         uint256 amount_ = 5_000e6;
@@ -422,7 +422,7 @@ contract PresaleTest is Test {
         presale.buyWithStable(address(usdc), amount_, 0);
         vm.stopPrank();
     }
-    
+
     function test_BuyWithStable_EmitsPhaseAdvancedForEachSkippedPhase() public {
         vm.warp(startingTime + 2 * PHASE_DURATION);
         uint256 amount_ = 1_000e6;
@@ -917,9 +917,9 @@ contract PresaleTest is Test {
     function test_Blacklist_EmitsBlacklistUpdated() public {
         vm.expectEmit(true, false, false, true, address(presale));
         emit Presale.BlacklistUpdated(user, true);
-        
+
         vm.prank(owner);
-        presale.blacklist(user);        
+        presale.blacklist(user);
     }
 
     function test_RemoveBlacklist_ClearsFlag() public {
@@ -935,9 +935,9 @@ contract PresaleTest is Test {
     function test_RemoveBlacklist_EmitsBlacklistUpdated() public {
         vm.expectEmit(true, false, false, true, address(presale));
         emit Presale.BlacklistUpdated(user, false);
-        
+
         vm.prank(owner);
-        presale.removeBlacklist(user);        
+        presale.removeBlacklist(user);
     }
 
     function test_EmergencyERC20Withdraw_TransfersToOwner() public {
@@ -955,43 +955,32 @@ contract PresaleTest is Test {
     }
 
     function test_EmergencyERC20Withdraw_TransfersSaleTokenSurplusAfterEnd() public {
-        uint256 amount_ = 1 ether;
-        _warpTo(startingTime + 1 days);
-        vm.deal(user, amount_);
-
-        vm.prank(user);
-        presale.buyWithEther{value: amount_}(0);
+        uint256 amount_ = 3_000e6;
+        vm.warp(startingTime);
+        _buyWithStable(usdc, user, amount_);
         vm.warp(endingTime + 1);
 
         vm.prank(owner);
         presale.emergencyERC20Withdraw(address(saleToken), 2_400_000e18);
 
-        uint256 ownerSaleTokenBalance_ = saleToken.balanceOf(owner);
-        uint256 presaleSaleTokenBalance_ = saleToken.balanceOf(address(presale));
-        assertEq(ownerSaleTokenBalance_, 2_400_000e18);
-        assertEq(presaleSaleTokenBalance_, 600_000e18);
+        assertEq(saleToken.balanceOf(owner), 2_400_000e18);
+        assertEq(saleToken.balanceOf(address(presale)), 600_000e18);
     }
 
     function test_EmergencyERC20Withdraw_TransfersSaleTokenSurplusAfterClaim() public {
-        uint256 amount_ = 1 ether;
-        _warpTo(startingTime + 1 days);
-        vm.deal(user, amount_);
-
-        vm.startPrank(user);
-        presale.buyWithEther{value: amount_}(0);
+        uint256 amount_ = 3_000e6;
+        vm.warp(startingTime);
+        _buyWithStable(usdc, user, amount_);
         vm.warp(endingTime + 1);
+        vm.prank(user);
         presale.claim();
-        vm.stopPrank();
 
         vm.prank(owner);
         presale.emergencyERC20Withdraw(address(saleToken), 2_400_000e18);
 
-        uint256 ownerSaleTokenBalance_ = saleToken.balanceOf(owner);
-        uint256 presaleSaleTokenBalance_ = saleToken.balanceOf(address(presale));
-        uint256 userSaleTokenBalance_ = saleToken.balanceOf(user);
-        assertEq(ownerSaleTokenBalance_, 2_400_000e18);
-        assertEq(presaleSaleTokenBalance_, 0);
-        assertEq(userSaleTokenBalance_, 600_000e18);
+        assertEq(saleToken.balanceOf(owner), 2_400_000e18);
+        assertEq(saleToken.balanceOf(address(presale)), 0);
+        assertEq(saleToken.balanceOf(user), 600_000e18);
     }
 
     function test_EmergencyERC20Withdraw_EmitsEmergencyETHWithrawn() public {
