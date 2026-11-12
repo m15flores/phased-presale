@@ -202,10 +202,10 @@ contract Presale is Ownable2Step {
         // Increment user's balance
         userTokenBalance[msg.sender] += tokenAmountToReceive;
 
+        emit TokenPurchased(msg.sender, address(0), msg.value, tokenAmountToReceive, pricedPhase_);
+
         (bool success,) = fundsReceiverAddress.call{value: msg.value}("");
         require(success, TransferFailed());
-
-        emit TokenPurchased(msg.sender, address(0), msg.value, tokenAmountToReceive, pricedPhase_);
     }
 
     function claim() external {
@@ -236,9 +236,9 @@ contract Presale is Ownable2Step {
 
     function emergencyETHWithdraw() external onlyOwner {
         uint256 balance = address(this).balance;
+        emit EmergencyETHWithdrawn(msg.sender, balance);
         (bool success,) = msg.sender.call{value: balance}("");
         require(success, TransferFailed());
-        emit EmergencyETHWithdrawn(msg.sender, balance);
     }
 
     function getEtherPrice() public view returns (uint256) {
