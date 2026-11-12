@@ -36,6 +36,18 @@ contract Presale is Ownable2Step {
     event BlacklistUpdated(address indexed user, bool isBlacklisted);
     event EmergencyERC20Withdrawn(address indexed token, address indexed to, uint256 amount);
     event EmergencyETHWithdrawn(address indexed to, uint256 amount);
+    event PresaleCreated(
+        address indexed saleToken,
+        address usdt,
+        address usdc,
+        address fundsReceiver,
+        address dataFeed,
+        uint256 maxPriceAge,
+        uint256 maxSellingAmount,
+        uint256 startingTime,
+        uint256 endingTime
+    );
+    event PhaseConfigured(uint256 indexed phase, uint256 cap, uint256 price, uint256 endingTime);
 
     error IncorrectTimes();
     error UserBlacklisted();
@@ -81,6 +93,7 @@ contract Presale is Ownable2Step {
             if (phases_[i][1] == 0) revert InvalidPhasePrice();
             if (phases_[i][0] <= previousCap_) revert InvalidPhaseCap();
             if (phases_[i][2] <= previousEnd_) revert InvalidPhaseTime();
+            emit PhaseConfigured(i, phases_[i][0], phases_[i][1], phases_[i][2]);
             previousCap_ = phases_[i][0];
             previousEnd_ = phases_[i][2];
         }
@@ -99,6 +112,18 @@ contract Presale is Ownable2Step {
         phases = phases_;
 
         IERC20(saleTokenAddress).safeTransferFrom(msg.sender, address(this), maxSellingAmount);
+
+        emit PresaleCreated(
+            saleTokenAddress_,
+            usdtAddress_,
+            usdcAddress_,
+            fundsReceiverAddress_,
+            dataFeedAddress_,
+            maxPriceAge_,
+            maxSellingAmount_,
+            startingTime_,
+            endingTime_
+        );
     }
 
     /**

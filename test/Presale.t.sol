@@ -108,6 +108,48 @@ contract PresaleTest is Test {
         assertEq(saleToken.balanceOf(owner), 0);
     }
 
+    function test_Constructor_EmitsPresaleCreated() public {
+        PresaleParams memory presaleParams_ = _defaultParams();
+        saleToken.mint(owner, MAX_SELLING_AMOUNT);
+        uint64 nonce_ = vm.getNonce(owner);
+        address predicted_ = vm.computeCreateAddress(owner, nonce_);
+        vm.prank(owner);
+        saleToken.approve(predicted_, MAX_SELLING_AMOUNT);
+        vm.setNonceUnsafe(owner, nonce_);
+
+        vm.expectEmit(true, false, false, true, predicted_);
+        emit Presale.PresaleCreated(
+            address(saleToken),
+            address(usdt18),
+            address(usdc),
+            presaleParams_.fundsReceiver,
+            address(aggregator),
+            MAX_PRICE_AGE,
+            MAX_SELLING_AMOUNT,
+            presaleParams_.startingTime,
+            presaleParams_.endingTime
+        );
+        _deployPresale(presaleParams_);
+    }
+
+    function test_Constructor_EmitsPhaseConfigured() public {
+        PresaleParams memory presaleParams_ = _defaultParams();
+        saleToken.mint(owner, MAX_SELLING_AMOUNT);
+        uint64 nonce_ = vm.getNonce(owner);
+        address predicted_ = vm.computeCreateAddress(owner, nonce_);
+        vm.prank(owner);
+        saleToken.approve(predicted_, MAX_SELLING_AMOUNT);
+        vm.setNonceUnsafe(owner, nonce_);
+
+        vm.expectEmit(true, false, false, true, predicted_);
+        emit Presale.PhaseConfigured(0, PHASE_0_CAP, PHASE_0_PRICE, presaleParams_.startingTime + PHASE_DURATION);
+        vm.expectEmit(true, false, false, true, predicted_);
+        emit Presale.PhaseConfigured(1, PHASE_1_CAP, PHASE_1_PRICE, presaleParams_.startingTime + 2 * PHASE_DURATION);
+        vm.expectEmit(true, false, false, true, predicted_);
+        emit Presale.PhaseConfigured(2, PHASE_2_CAP, PHASE_2_PRICE, presaleParams_.startingTime + 3 * PHASE_DURATION);
+        _deployPresale(presaleParams_);
+    }
+
     function test_Constructor_RevertWhen_StartingTimeAfterEndingTime() public {
         uint256 endingTime_ = block.timestamp + 1 days;
         uint256 startingTime_ = endingTime_ + 1 days;
