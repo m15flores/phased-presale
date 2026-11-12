@@ -69,12 +69,22 @@ contract PresaleInvariantTest is Test {
             )
         );
 
-        handler = new PresaleHandler(presale, usdc, startingTime);
+        handler = new PresaleHandler(presale, usdc, startingTime, endingTime);
         targetContract(address(handler));
     }
 
     function invariant_TotalSoldNeverExceedsMax() public view {
         assertLe(presale.totalSold(), presale.maxSellingAmount());
+    }
+
+    function invariant_SaleTokenBalanceCoversOwedTokens() public view {
+        uint256 owed_ = presale.totalSold() - presale.totalClaimed();
+        uint256 presaleSaleTokenBalance_ = saleToken.balanceOf(address(presale));
+        assertGe(presaleSaleTokenBalance_, owed_);
+    }
+
+    function invariant_TotalClaimedMatchesClaimedTokens() public view {
+        assertEq(presale.totalClaimed(), handler.ghostTotalClaimed());
     }
 
     function _phases() internal view returns (uint256[][3] memory phases_) {
