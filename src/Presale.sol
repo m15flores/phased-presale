@@ -33,6 +33,9 @@ contract Presale is Ownable2Step {
     );
     event TokenClaimed(address indexed user, uint256 amount);
     event PhaseAdvanced(uint256 indexed phase);
+    event BlacklistUpdated(address indexed user, bool isBlacklisted);
+    event EmergencyERC20Withdrawn(address indexed token, address indexed to, uint256 amount);
+    event EmergencyETHWithdrawn(address indexed to, uint256 amount);
 
     error IncorrectTimes();
     error UserBlacklisted();
@@ -104,10 +107,12 @@ contract Presale is Ownable2Step {
      */
     function blacklist(address user_) external onlyOwner {
         isBlacklisted[user_] = true;
+        emit BlacklistUpdated(user_, true);
     }
 
     function removeBlacklist(address user_) external onlyOwner {
         isBlacklisted[user_] = false;
+        emit BlacklistUpdated(user_, false);
     }
 
     /**
@@ -198,12 +203,14 @@ contract Presale is Ownable2Step {
             if (amount_ > surplus_) revert AmountExceedsSurplus();
         }
         IERC20(tokenAddress_).safeTransfer(msg.sender, amount_);
+        emit EmergencyERC20Withdrawn(tokenAddress_, msg.sender, amount_);
     }
 
     function emergencyETHWithdraw() external onlyOwner {
         uint256 balance = address(this).balance;
         (bool success,) = msg.sender.call{value: balance}("");
         require(success, TransferFailed());
+        emit EmergencyETHWithdrawn(msg.sender, balance);
     }
 
     function getEtherPrice() public view returns (uint256) {

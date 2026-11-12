@@ -914,6 +914,14 @@ contract PresaleTest is Test {
         assertTrue(presale.isBlacklisted(user));
     }
 
+    function test_Blacklist_EmitsBlacklistUpdated() public {
+        vm.expectEmit(true, false, false, true, address(presale));
+        emit Presale.BlacklistUpdated(user, true);
+        
+        vm.prank(owner);
+        presale.blacklist(user);        
+    }
+
     function test_RemoveBlacklist_ClearsFlag() public {
         vm.prank(owner);
         presale.blacklist(user);
@@ -922,6 +930,14 @@ contract PresaleTest is Test {
         vm.prank(owner);
         presale.removeBlacklist(user);
         assertFalse(presale.isBlacklisted(user));
+    }
+
+    function test_RemoveBlacklist_EmitsBlacklistUpdated() public {
+        vm.expectEmit(true, false, false, true, address(presale));
+        emit Presale.BlacklistUpdated(user, false);
+        
+        vm.prank(owner);
+        presale.removeBlacklist(user);        
     }
 
     function test_EmergencyERC20Withdraw_TransfersToOwner() public {
@@ -978,8 +994,18 @@ contract PresaleTest is Test {
         assertEq(userSaleTokenBalance_, 600_000e18);
     }
 
-    function test_EmergencyETHWithdraw_TransfersToOwner() public {
+    function test_EmergencyERC20Withdraw_EmitsEmergencyETHWithrawn() public {
         uint256 amount_ = 1_000e6;
+        usdc.mint(address(presale), amount_);
+
+        vm.expectEmit(true, true, false, true, address(presale));
+        emit Presale.EmergencyERC20Withdrawn(address(usdc), owner, amount_);
+        vm.prank(owner);
+        presale.emergencyERC20Withdraw(address(usdc), amount_);
+    }
+
+    function test_EmergencyETHWithdraw_TransfersToOwner() public {
+        uint256 amount_ = 1 ether;
         vm.deal(address(presale), amount_);
         uint256 ownerBalanceBefore_ = owner.balance;
 
@@ -990,6 +1016,16 @@ contract PresaleTest is Test {
         uint256 presaleBalance_ = address(presale).balance;
         assertEq(ownerBalanceAfter_ - ownerBalanceBefore_, amount_);
         assertEq(presaleBalance_, 0);
+    }
+
+    function test_EmergencyETHWithdraw_EmitsEmergencyETHWithrawn() public {
+        uint256 amount_ = 1 ether;
+        vm.deal(address(presale), amount_);
+
+        vm.expectEmit(true, false, false, true, address(presale));
+        emit Presale.EmergencyETHWithdrawn(owner, amount_);
+        vm.prank(owner);
+        presale.emergencyETHWithdraw();
     }
 
     function test_GetEtherPrice_ScalesTo18Decimals() public view {
