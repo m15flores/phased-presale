@@ -82,7 +82,10 @@ contract Presale is Ownable2Step {
         uint256 endingTime_,
         uint256[][3] memory phases_
     ) Ownable(msg.sender) {
-        if (fundsReceiverAddress_ == address(0)) revert ZeroAddress();
+        if (
+            fundsReceiverAddress_ == address(0) || saleTokenAddress_ == address(0) || usdcAddress_ == address(0)
+                || usdtAddress_ == address(0) || dataFeedAddress_ == address(0)
+        ) revert ZeroAddress();
         if (maxPriceAge_ == 0) revert ZeroAmount();
         if (startingTime_ >= endingTime_) revert IncorrectTimes();
 
@@ -240,7 +243,7 @@ contract Presale is Ownable2Step {
 
     function getEtherPrice() public view returns (uint256) {
         IAggregator feed_ = IAggregator(dataFeedAddress);
-        (, int256 price,, uint256 updatedAt,) = IAggregator(dataFeedAddress).latestRoundData();
+        (, int256 price,, uint256 updatedAt,) = feed_.latestRoundData();
         if (price <= 0) revert InvalidPrice();
         // forge-lint: disable-next-line(block-timestamp)
         if (block.timestamp > updatedAt + maxPriceAge) revert StalePrice();
