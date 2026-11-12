@@ -69,7 +69,7 @@ contract PresaleInvariantTest is Test {
             )
         );
 
-        handler = new PresaleHandler(presale, usdc, startingTime, endingTime);
+        handler = new PresaleHandler(presale, usdc, aggregator, startingTime, endingTime);
         targetContract(address(handler));
     }
 
@@ -102,6 +102,14 @@ contract PresaleInvariantTest is Test {
 
     function invariant_PhaseNeverDecreases() public view {
         assertFalse(handler.phaseDecreased());
+    }
+
+    function invariant_PresaleHoldsNoEth() public view {
+        assertEq(address(presale).balance, 0);
+    }
+
+    function invariant_FundsReceiverGetsAllEth() public view {
+        assertEq(address(fundsReceiver).balance, handler.ghostEthPaid());
     }
 
     function _phases() internal view returns (uint256[][3] memory phases_) {

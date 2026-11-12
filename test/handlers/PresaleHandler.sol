@@ -5,22 +5,32 @@ pragma solidity 0.8.34;
 import "forge-std/Test.sol";
 import "../../src/Presale.sol";
 import "../mocks/MockERC20.sol";
+import "../mocks/MockAggregator.sol";
 
 contract PresaleHandler is Test {
     Presale public immutable presale;
     MockERC20 public immutable usdc;
+    MockAggregator public immutable aggregator;
     uint256 public immutable startingTime;
     uint256 public immutable endingTime;
     address[] public actors;
 
     uint256 public ghostTotalClaimed;
     uint256 public ghostTotalBought;
+    uint256 public ghostEthPaid;
     uint256 public maxPhaseSeen;
     bool public phaseDecreased;
 
-    constructor(Presale presale_, MockERC20 usdc_, uint256 startingTime_, uint256 endingTime_) {
+    constructor(
+        Presale presale_,
+        MockERC20 usdc_,
+        MockAggregator aggregator_,
+        uint256 startingTime_,
+        uint256 endingTime_
+    ) {
         presale = presale_;
         usdc = usdc_;
+        aggregator = aggregator_;
         startingTime = startingTime_;
         endingTime = endingTime_;
 
@@ -44,6 +54,25 @@ contract PresaleHandler is Test {
 
         uint256 userTokenBalanceAfter_ = presale.userTokenBalance(actor_);
         ghostTotalBought += userTokenBalanceAfter_ - userTokenBalanceBefore_;
+        _trackPhase();
+    }
+
+    function buyWithEther(uint256 actorSeed_, uint256 amount_) public {
+        actorSeed_ = bound(actorSeed_, 0, actors.length - 1);
+        amount_ = bound(amount_, 0.001 ether, 1 ether);
+        address actor_ = actors[actorSeed_];
+
+        vm.deal(actor_, amount_);
+        if (block.timestamp < startingTime) vm.warp(startingTime);
+        aggregator.setUpdatedAt(block.timestamp);
+
+        uint256 userTokenBalanceBefore_ = presale.userTokenBalance(actor_);
+        vm.prank(actor_);
+        presale.buyWithEther{value: amount_}(0);
+        uint256 userTokenBalanceAfter_ = presale.userTokenBalance(actor_);
+
+        ghostTotalBought += userTokenBalanceAfter_ - userTokenBalanceBefore_;
+        ghostEthPaid += amount_;
         _trackPhase();
     }
 
