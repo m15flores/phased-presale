@@ -192,8 +192,8 @@ contract Presale is Ownable2Step {
 
         _advancePhase();
         uint256 pricedPhase_ = currentPhase;
-        uint256 usdValue = msg.value * getEtherPrice() / 1e18;
-        uint256 tokenAmountToReceive = usdValue * 1e6 / phases[currentPhase][1];
+        uint256 usdValue = msg.value * getEtherPrice();
+        uint256 tokenAmountToReceive = usdValue * 1e6 / (1e18 * phases[currentPhase][1]);
         if (tokenAmountToReceive < minTokensOut_) revert SlippageExceeded();
 
         totalSold += tokenAmountToReceive;

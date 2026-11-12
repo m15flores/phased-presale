@@ -481,6 +481,22 @@ contract PresaleTest is Test {
         vm.stopPrank();
     }
 
+    function testFuzz_BuyWithStable_RoundsDownInFavourOfPrototcol(uint256 amount_) public {
+        amount_ = bound(amount_, 1, 5_000e6);
+        usdc.mint(user, amount_);
+        vm.prank(user);
+        usdc.approve(address(presale), amount_);
+        vm.warp(startingTime);
+
+        vm.prank(user);
+        presale.buyWithStable(address(usdc), amount_, 0);
+
+        uint256 userTokenBalance_ = presale.userTokenBalance(user);
+        uint256 value_ = amount_ * 1e12 * 1e6;
+        assertLe(userTokenBalance_ * PHASE_0_PRICE, value_);
+        assertLt(value_ - userTokenBalance_ * PHASE_0_PRICE, PHASE_0_PRICE);
+    }
+
     function test_BuyWithStable_RevertWhen_UserBlacklisted() public {
         vm.prank(owner);
         presale.blacklist(user);
@@ -719,6 +735,23 @@ contract PresaleTest is Test {
         emit Presale.TokenPurchased(user, address(0), amount_, 600_000e18, 0);
         vm.prank(user);
         presale.buyWithEther{value: amount_}(0);
+    }
+
+    function testFuzz_BuyWithEther_TokensMatchExactFormula(uint256 amount_, int256 answer_) public {
+        amount_ = bound(amount_, 1, 0.1 ether);
+        answer_ = bound(answer_, 1e8, 10_000e8);
+        
+        aggregator.setAnswer(answer_);
+        _warpTo(startingTime);
+        vm.deal(user, amount_);
+
+        vm.prank(user);
+        presale.buyWithEther{value: amount_}(0);
+
+        uint256 priceE18_ = uint256(answer_) * 1e10;
+        uint256 expected_ = amount_ * priceE18_ * 1e6 / (1e18 * PHASE_0_PRICE);
+        uint256 userTokenBalance_ = presale.userTokenBalance(user);
+        assertEq(userTokenBalance_, expected_);
     }
 
     function test_BuyWithEther_RevertWhen_BuyingBeforeStartingTime() public {
