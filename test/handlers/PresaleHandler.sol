@@ -14,6 +14,7 @@ contract PresaleHandler is Test {
     address[] public actors;
 
     uint256 public ghostTotalClaimed;
+    uint256 public ghostTotalBought;
 
     constructor(Presale presale_, MockERC20 usdc_, uint256 startingTime_, uint256 endingTime_) {
         presale = presale_;
@@ -32,17 +33,21 @@ contract PresaleHandler is Test {
         address actor_ = actors[actorSeed_];
         usdc.mint(actor_, amount_);
         if (block.timestamp < startingTime) vm.warp(startingTime);
+        uint256 userTokenBalanceBefore_ = presale.userTokenBalance(actor_);
 
         vm.startPrank(actor_);
         usdc.approve(address(presale), amount_);
         presale.buyWithStable(address(usdc), amount_, 0);
         vm.stopPrank();
+
+        uint256 userTokenBalanceAfter_ = presale.userTokenBalance(actor_);
+        ghostTotalBought += userTokenBalanceAfter_ - userTokenBalanceBefore_;
     }
 
     function claim(uint256 actorSeed_) public {
         actorSeed_ = bound(actorSeed_, 0, actors.length - 1);
         address actor_ = actors[actorSeed_];
-        if(block.timestamp < endingTime) vm.warp(endingTime);
+        if (block.timestamp < endingTime) vm.warp(endingTime);
 
         uint256 owed_ = presale.userTokenBalance(actor_);
 
@@ -50,5 +55,9 @@ contract PresaleHandler is Test {
         presale.claim();
 
         ghostTotalClaimed += owed_;
+    }
+
+    function actorsLength() external view returns (uint256) {
+        return actors.length;
     }
 }

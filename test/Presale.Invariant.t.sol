@@ -87,6 +87,19 @@ contract PresaleInvariantTest is Test {
         assertEq(presale.totalClaimed(), handler.ghostTotalClaimed());
     }
 
+    function invariant_UserBalancesSumMatchesOwed() public view {
+        uint256 sum_;
+        for (uint256 i = 0; i < handler.actorsLength(); i++) {
+            sum_ += presale.userTokenBalance(handler.actors(i));
+        }
+
+        assertEq(sum_, presale.totalSold() - presale.totalClaimed());
+    }
+
+    function invariant_TotalSoldMatchesBoughtTokens() public view {
+        assertEq(presale.totalSold(), handler.ghostTotalBought());
+    }
+
     function _phases() internal view returns (uint256[][3] memory phases_) {
         phases_[0] = new uint256[](3);
         phases_[0][0] = PHASE_0_CAP;
