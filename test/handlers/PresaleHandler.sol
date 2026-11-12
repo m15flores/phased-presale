@@ -15,6 +15,8 @@ contract PresaleHandler is Test {
 
     uint256 public ghostTotalClaimed;
     uint256 public ghostTotalBought;
+    uint256 public maxPhaseSeen;
+    bool public phaseDecreased;
 
     constructor(Presale presale_, MockERC20 usdc_, uint256 startingTime_, uint256 endingTime_) {
         presale = presale_;
@@ -42,6 +44,7 @@ contract PresaleHandler is Test {
 
         uint256 userTokenBalanceAfter_ = presale.userTokenBalance(actor_);
         ghostTotalBought += userTokenBalanceAfter_ - userTokenBalanceBefore_;
+        _trackPhase();
     }
 
     function claim(uint256 actorSeed_) public {
@@ -59,5 +62,16 @@ contract PresaleHandler is Test {
 
     function actorsLength() external view returns (uint256) {
         return actors.length;
+    }
+
+    function warp(uint256 seconds_) public {
+        seconds_ = bound(seconds_, 1, 5 days);
+        vm.warp(block.timestamp + seconds_);
+    }
+
+    function _trackPhase() internal {
+        uint256 phase_ = presale.currentPhase();
+        if (phase_ < maxPhaseSeen) phaseDecreased = true;
+        else maxPhaseSeen = phase_;
     }
 }

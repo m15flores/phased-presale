@@ -100,6 +100,10 @@ contract PresaleInvariantTest is Test {
         assertEq(presale.totalSold(), handler.ghostTotalBought());
     }
 
+    function invariant_PhaseNeverDecreases() public view {
+        assertFalse(handler.phaseDecreased());
+    }
+
     function _phases() internal view returns (uint256[][3] memory phases_) {
         phases_[0] = new uint256[](3);
         phases_[0][0] = PHASE_0_CAP;
