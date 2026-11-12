@@ -395,6 +395,50 @@ contract PresaleTest is Test {
         vm.stopPrank();
     }
 
+    function test_BuyWithStable_EmitsPhaseAdvancedWhenPhaseTimeExpires() public {
+        vm.warp(startingTime + PHASE_DURATION);
+        uint256 amount_ = 1_000e6;
+        usdc.mint(user, amount_);
+
+        vm.startPrank(user);
+        usdc.approve(address(presale), amount_);
+
+        vm.expectEmit(true, false, false, false, address(presale));
+        emit Presale.PhaseAdvanced(1);
+        presale.buyWithStable(address(usdc), amount_, 0);
+        vm.stopPrank();
+    }
+    
+    function test_BuyWithStable_EmitsPhaseAdvancedWhenCapReached() public {
+        vm.warp(startingTime);
+        uint256 amount_ = 5_000e6;
+        usdc.mint(user, amount_);
+
+        vm.startPrank(user);
+        usdc.approve(address(presale), amount_);
+
+        vm.expectEmit(true, false, false, false, address(presale));
+        emit Presale.PhaseAdvanced(1);
+        presale.buyWithStable(address(usdc), amount_, 0);
+        vm.stopPrank();
+    }
+    
+    function test_BuyWithStable_EmitsPhaseAdvancedForEachSkippedPhase() public {
+        vm.warp(startingTime + 2 * PHASE_DURATION);
+        uint256 amount_ = 1_000e6;
+        usdc.mint(user, amount_);
+
+        vm.startPrank(user);
+        usdc.approve(address(presale), amount_);
+
+        vm.expectEmit(true, false, false, false, address(presale));
+        emit Presale.PhaseAdvanced(1);
+        vm.expectEmit(true, false, false, false, address(presale));
+        emit Presale.PhaseAdvanced(2);
+        presale.buyWithStable(address(usdc), amount_, 0);
+        vm.stopPrank();
+    }
+
     function test_BuyWithStable_RevertWhen_UserBlacklisted() public {
         vm.prank(owner);
         presale.blacklist(user);

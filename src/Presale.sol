@@ -32,6 +32,7 @@ contract Presale is Ownable2Step {
         address indexed buyer, address indexed paymentToken, uint256 paymentAmount, uint256 tokenAmount, uint256 phase
     );
     event TokenClaimed(address indexed user, uint256 amount);
+    event PhaseAdvanced(uint256 indexed phase);
 
     error IncorrectTimes();
     error UserBlacklisted();
@@ -225,6 +226,7 @@ contract Presale is Ownable2Step {
             currentPhase < 2 && (block.timestamp >= phases[currentPhase][2] || totalSold >= phases[currentPhase][0])
         ) {
             currentPhase++;
+            emit PhaseAdvanced(currentPhase);
         }
         // forge-lint: disable-end(block-timestamp)
     }
